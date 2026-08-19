@@ -15,7 +15,7 @@ export default function DashboardPage() {
   const [saving, setSaving] = useState(false);
   const [user, setUser] = useState<any>(null);
 
-  // Form states
+  // All form fields matching Admin
   const [handle, setHandle] = useState('');
   const [fullName, setFullName] = useState('');
   const [jobTitle, setJobTitle] = useState('');
@@ -26,7 +26,7 @@ export default function DashboardPage() {
   const [theme, setTheme] = useState('dark');
   const [avatarUrl, setAvatarUrl] = useState('');
 
-  // Links
+  // Social & Link fields
   const [website, setWebsite] = useState('');
   const [facebook, setFacebook] = useState('');
   const [instagram, setInstagram] = useState('');
@@ -76,7 +76,7 @@ export default function DashboardPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        alert('Image size must be under 2MB');
+        alert('Image must be under 2MB');
         return;
       }
       const reader = new FileReader();
@@ -113,9 +113,9 @@ export default function DashboardPage() {
     setSaving(false);
 
     if (error) {
-      alert(`Failed to save: ${error.message}`);
+      alert(`Failed to save card: ${error.message}`);
     } else {
-      alert('Card settings saved successfully!');
+      alert('Card updated successfully!');
     }
   };
 
@@ -159,9 +159,11 @@ export default function DashboardPage() {
               required
               className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
             />
-            <p className="text-xs text-blue-400 mt-1">
-              Your Link: nexxconnect.vercel.app/{handle}
-            </p>
+            {handle && (
+              <p className="text-xs text-blue-400 mt-1">
+                Your Link: nexxconnect.vercel.app/{handle}
+              </p>
+            )}
           </div>
 
           <div>
@@ -208,7 +210,7 @@ export default function DashboardPage() {
             <label className="text-xs text-slate-400">Location / Address</label>
             <input
               type="text"
-              placeholder="e.g. New York, USA"
+              placeholder="e.g. New York, USA or Maps link"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
@@ -311,7 +313,7 @@ export default function DashboardPage() {
           </div>
 
           <div>
-            <label className="text-xs text-slate-400">Profile Photo URL (Optional Direct Link)</label>
+            <label className="text-xs text-slate-400">Profile Photo URL (Alternative)</label>
             <input
               type="text"
               placeholder="https://..."

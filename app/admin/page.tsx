@@ -1,138 +1,292 @@
 'use client';
 
 import { useState } from 'react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export default function AdminPage() {
-  const [handle, setHandle] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [jobTitle, setJobTitle] = useState('');
-  const [phone, setPhone] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [location, setLocation] = useState('');
-  const [bio, setBio] = useState('');
-  const [theme, setTheme] = useState('dark');
-  const [avatarUrl, setAvatarUrl] = useState('');
-
-  // Links
-  const [facebook, setFacebook] = useState('');
-  const [instagram, setInstagram] = useState('');
-  const [linkedin, setLinkedin] = useState('');
-  const [website, setWebsite] = useState('');
-  const [googleReviews, setGoogleReviews] = useState('');
-  const [paymentLink, setPaymentLink] = useState('');
-
+  const supabase = createClientComponentClient();
   const [loading, setLoading] = useState(false);
+
+  const [formData, setFormData] = useState({
+    user_id: '',
+    handle: '',
+    full_name: '',
+    job_title: '',
+    phone: '',
+    whatsapp: '',
+    location: '',
+    bio: '',
+    theme: 'dark',
+    avatar_url: '',
+    website: '',
+    facebook: '',
+    instagram: '',
+    linkedin: '',
+    google_reviews: '',
+    payment_link: '',
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        alert('Image size must be under 2MB');
+        alert('Image must be under 2MB');
         return;
       }
       const reader = new FileReader();
-      reader.onloadend = () => setAvatarUrl(reader.result as string);
+      reader.onloadend = () => {
+        setFormData((prev) => ({ ...prev, avatar_url: reader.result as string }));
+      };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleCreateClient = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    try {
-      const res = await fetch('/api/admin/create-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          handle,
-          password,
-          full_name: fullName,
-          job_title: jobTitle,
-          phone,
-          whatsapp,
-          location,
-          bio,
-          theme,
-          avatar_url: avatarUrl,
-          facebook,
-          instagram,
-          linkedin,
-          website,
-          google_reviews: googleReviews,
-          payment_link: paymentLink,
-        }),
+    const payload = {
+      ...formData,
+      handle: formData.handle.toLowerCase().trim(),
+      user_id: formData.user_id.trim() || null,
+    };
+
+    const { error } = await supabase.from('cards').insert([payload]);
+
+    setLoading(false);
+
+    if (error) {
+      alert(`Error creating card: ${error.message}`);
+    } else {
+      alert('Card created successfully with all options!');
+      setFormData({
+        user_id: '',
+        handle: '',
+        full_name: '',
+        job_title: '',
+        phone: '',
+        whatsapp: '',
+        location: '',
+        bio: '',
+        theme: 'dark',
+        avatar_url: '',
+        website: '',
+        facebook: '',
+        instagram: '',
+        linkedin: '',
+        google_reviews: '',
+        payment_link: '',
       });
-
-      const data = await res.json();
-
-      if (res.ok && data?.success) {
-        alert(`Account Created Successfully!\nLive Link: https://nexxconnect.vercel.app/${data.handle}`);
-        setHandle(''); setPassword(''); setFullName(''); setJobTitle(''); setPhone(''); setWhatsapp(''); setLocation(''); setBio(''); setAvatarUrl(''); setFacebook(''); setInstagram(''); setLinkedin(''); setWebsite(''); setGoogleReviews(''); setPaymentLink('');
-      } else {
-        alert(`Error: ${data?.error || 'Failed to create account'}`);
-      }
-    } catch (err: any) {
-      alert(`Network Error: ${err.message}`);
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-4 sm:p-8 flex flex-col items-center">
-      <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-6">
-        <h1 className="text-2xl font-bold border-b border-slate-800 pb-4">Admin Panel: Create Client Profile</h1>
+    <div className="min-h-screen bg-slate-950 text-white p-6 flex flex-col items-center">
+      <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
+        <h1 className="text-2xl font-bold">Admin: Create Full Card</h1>
 
-        <form onSubmit={handleCreateClient} className="space-y-6">
-          <div className="space-y-3">
-            <h2 className="text-xs font-bold text-blue-400 uppercase">Account Credentials *</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="text" placeholder="Handle *" value={handle} onChange={(e) => setHandle(e.target.value)} required className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white" />
-              <input type="text" placeholder="Password (Min 8) *" value={password} onChange={(e) => setPassword(e.target.value)} required className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white" />
-            </div>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <label className="text-xs text-slate-400">Handle / Custom Route (Required)</label>
+            <input
+              name="handle"
+              type="text"
+              required
+              value={formData.handle}
+              onChange={handleChange}
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
+            />
           </div>
 
-          <div className="space-y-3 pt-4 border-t border-slate-800">
-            <h2 className="text-xs font-bold text-blue-400 uppercase">Appearance & Photo</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="file" accept="image/*" onChange={handleImageUpload} className="p-2 bg-slate-800 rounded-xl border border-slate-700 text-xs text-slate-300" />
-              <select value={theme} onChange={(e) => setTheme(e.target.value)} className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white">
-                <option value="dark">Dark Modern</option>
-                <option value="glass">Glassmorphism</option>
-                <option value="light">Minimal Light</option>
-                <option value="neon">Cyber Neon</option>
-              </select>
-            </div>
+          <div>
+            <label className="text-xs text-slate-400">User ID (Optional Supabase Auth ID)</label>
+            <input
+              name="user_id"
+              type="text"
+              value={formData.user_id}
+              onChange={handleChange}
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
+            />
           </div>
 
-          <div className="space-y-3 pt-4 border-t border-slate-800">
-            <h2 className="text-xs font-bold text-blue-400 uppercase">Personal Details</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="text" placeholder="Full Name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white" />
-              <input type="text" placeholder="Job Title" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white" />
-              <input type="text" placeholder="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white" />
-              <input type="text" placeholder="WhatsApp Number" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white" />
-              <input type="text" placeholder="Location" value={location} onChange={(e) => setLocation(e.target.value)} className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white" />
-            </div>
-            <textarea placeholder="Bio" value={bio} onChange={(e) => setBio(e.target.value)} rows={2} className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white" />
+          <div>
+            <label className="text-xs text-slate-400">Full Name</label>
+            <input
+              name="full_name"
+              type="text"
+              value={formData.full_name}
+              onChange={handleChange}
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
+            />
           </div>
 
-          <div className="space-y-3 pt-4 border-t border-slate-800">
-            <h2 className="text-xs font-bold text-blue-400 uppercase">Links & Socials</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="text" placeholder="Instagram URL" value={instagram} onChange={(e) => setInstagram(e.target.value)} className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white" />
-              <input type="text" placeholder="Facebook URL" value={facebook} onChange={(e) => setFacebook(e.target.value)} className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white" />
-              <input type="text" placeholder="LinkedIn URL" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white" />
-              <input type="text" placeholder="Website URL" value={website} onChange={(e) => setWebsite(e.target.value)} className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white" />
-              <input type="text" placeholder="Google Reviews Link" value={googleReviews} onChange={(e) => setGoogleReviews(e.target.value)} className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white" />
-              <input type="text" placeholder="Payment / UPI Link" value={paymentLink} onChange={(e) => setPaymentLink(e.target.value)} className="p-3 bg-slate-800 rounded-xl border border-slate-700 text-white" />
-            </div>
+          <div>
+            <label className="text-xs text-slate-400">Job Title</label>
+            <input
+              name="job_title"
+              type="text"
+              value={formData.job_title}
+              onChange={handleChange}
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
+            />
           </div>
 
-          <button type="submit" disabled={loading} className="w-full py-4 bg-blue-600 font-bold rounded-xl text-white">
-            {loading ? 'Creating...' : 'Create Account & Save All Fields'}
+          <div>
+            <label className="text-xs text-slate-400">Phone</label>
+            <input
+              name="phone"
+              type="text"
+              value={formData.phone}
+              onChange={handleChange}
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-400">WhatsApp</label>
+            <input
+              name="whatsapp"
+              type="text"
+              value={formData.whatsapp}
+              onChange={handleChange}
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-400">Location</label>
+            <input
+              name="location"
+              type="text"
+              value={formData.location}
+              onChange={handleChange}
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="text-xs text-slate-400">Bio</label>
+            <textarea
+              name="bio"
+              rows={2}
+              value={formData.bio}
+              onChange={handleChange}
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-400">Website</label>
+            <input
+              name="website"
+              type="text"
+              value={formData.website}
+              onChange={handleChange}
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-400">Facebook</label>
+            <input
+              name="facebook"
+              type="text"
+              value={formData.facebook}
+              onChange={handleChange}
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-400">Instagram</label>
+            <input
+              name="instagram"
+              type="text"
+              value={formData.instagram}
+              onChange={handleChange}
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-400">LinkedIn</label>
+            <input
+              name="linkedin"
+              type="text"
+              value={formData.linkedin}
+              onChange={handleChange}
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-400">Google Reviews</label>
+            <input
+              name="google_reviews"
+              type="text"
+              value={formData.google_reviews}
+              onChange={handleChange}
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-400">Payment Link</label>
+            <input
+              name="payment_link"
+              type="text"
+              value={formData.payment_link}
+              onChange={handleChange}
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-400">Theme</label>
+            <select
+              name="theme"
+              value={formData.theme}
+              onChange={handleChange}
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
+            >
+              <option value="dark">Dark Modern</option>
+              <option value="glass">Glassmorphism</option>
+              <option value="light">Minimal Light</option>
+              <option value="neon">Cyber Neon</option>
+            </select>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="text-xs text-slate-400">Upload Photo File</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="w-full p-2 bg-slate-800 rounded-xl border border-slate-700 text-xs text-slate-300"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="text-xs text-slate-400">Profile Photo URL (Alternative)</label>
+            <input
+              name="avatar_url"
+              type="text"
+              value={formData.avatar_url}
+              onChange={handleChange}
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="md:col-span-2 py-4 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl text-white transition mt-2"
+          >
+            {loading ? 'Creating Card...' : 'Create Card'}
           </button>
         </form>
       </div>

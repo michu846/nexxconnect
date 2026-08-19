@@ -73,24 +73,27 @@ export default function AdminPage() {
 
     const { error } = await supabase
       .from('cards')
-      .upsert({
-        user_id: userIdToSave,
-        handle: handle.toLowerCase().trim(),
-        full_name: fullName,
-        job_title: jobTitle,
-        phone,
-        whatsapp,
-        location,
-        bio,
-        theme,
-        avatar_url: avatarUrl,
-        website,
-        facebook,
-        instagram,
-        linkedin,
-        google_reviews: googleReviews,
-        payment_link: paymentLink,
-      });
+      .upsert(
+        {
+          user_id: userIdToSave,
+          handle: handle.toLowerCase().trim(),
+          full_name: fullName,
+          job_title: jobTitle,
+          phone,
+          whatsapp,
+          location,
+          bio,
+          theme,
+          avatar_url: avatarUrl,
+          website,
+          facebook,
+          instagram,
+          linkedin,
+          google_reviews: googleReviews,
+          payment_link: paymentLink,
+        },
+        { onConflict: 'handle' }
+      );
 
     setSaving(false);
 

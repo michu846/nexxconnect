@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const [saving, setSaving] = useState(false);
   const [user, setUser] = useState<any>(null);
 
-  // Form states matching Admin
+  // Form states
   const [handle, setHandle] = useState('');
   const [fullName, setFullName] = useState('');
   const [jobTitle, setJobTitle] = useState('');
@@ -94,24 +94,27 @@ export default function DashboardPage() {
 
     const { error } = await supabase
       .from('cards')
-      .upsert({
-        user_id: user.id,
-        handle: handle.toLowerCase().trim(),
-        full_name: fullName,
-        job_title: jobTitle,
-        phone,
-        whatsapp,
-        location,
-        bio,
-        theme,
-        avatar_url: avatarUrl,
-        website,
-        facebook,
-        instagram,
-        linkedin,
-        google_reviews: googleReviews,
-        payment_link: paymentLink,
-      });
+      .upsert(
+        {
+          user_id: user.id,
+          handle: handle.toLowerCase().trim(),
+          full_name: fullName,
+          job_title: jobTitle,
+          phone,
+          whatsapp,
+          location,
+          bio,
+          theme,
+          avatar_url: avatarUrl,
+          website,
+          facebook,
+          instagram,
+          linkedin,
+          google_reviews: googleReviews,
+          payment_link: paymentLink,
+        },
+        { onConflict: 'handle' }
+      );
 
     setSaving(false);
 

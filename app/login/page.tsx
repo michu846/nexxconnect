@@ -5,69 +5,72 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [handle, setHandle] = useState('');
   const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const router = useRouter();
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
 
-    if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) setErrorMsg(error.message);
-      else alert('Account created! You can now log in.');
+    const cleanHandle = handle.toLowerCase().trim();
+    const virtualEmail = `${cleanHandle}@nexxconnect.internal`;
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: virtualEmail,
+      password: password,
+    });
+
+    if (error) {
+      setErrorMsg('Invalid handle or password.');
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setErrorMsg(error.message);
-      else router.push('/dashboard');
+      router.push('/dashboard');
     }
+
     setLoading(false);
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
-      <form onSubmit={handleAuth} className="w-full max-w-sm bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
-        <h1 className="text-2xl font-bold text-center">{isSignUp ? 'Create Account' : 'Welcome Back'}</h1>
-        
+      <form onSubmit={handleLogin} className="w-full max-w-sm bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
+        <h1 className="text-2xl font-bold text-center">Client Login</h1>
+
         {errorMsg && <p className="text-red-400 text-sm text-center">{errorMsg}</p>}
 
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
-        />
+        <div>
+          <label className="text-xs text-slate-400">Handle / Username</label>
+          <input
+            type="text"
+            placeholder="e.g. mishab"
+            value={handle}
+            onChange={(e) => setHandle(e.target.value)}
+            required
+            className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white mt-1"
+          />
+        </div>
 
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white"
-        />
+        <div>
+          <label className="text-xs text-slate-400">Password</label>
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 text-white mt-1"
+          />
+        </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 bg-blue-600 hover:bg-blue-500 font-semibold rounded-xl transition"
+          className="w-full py-3 bg-blue-600 hover:bg-blue-500 font-semibold rounded-xl transition text-white"
         >
-          {loading ? 'Processing...' : isSignUp ? 'Sign Up' : 'Log In'}
+          {loading ? 'Logging in...' : 'Log In'}
         </button>
-
-        <p 
-          onClick={() => setIsSignUp(!isSignUp)}
-          className="text-xs text-slate-400 text-center cursor-pointer hover:underline pt-2"
-        >
-          {isSignUp ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
-        </p>
       </form>
     </div>
   );

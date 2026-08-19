@@ -6,11 +6,6 @@ import { useRouter } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -37,8 +32,15 @@ export default function DashboardPage() {
   const [googleReviews, setGoogleReviews] = useState('');
   const [paymentLink, setPaymentLink] = useState('');
 
+  const getSupabase = () => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    return createClient(url, key);
+  };
+
   useEffect(() => {
     const fetchUserData = async () => {
+      const supabase = getSupabase();
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push('/login');
@@ -91,6 +93,7 @@ export default function DashboardPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    const supabase = getSupabase();
 
     const { error } = await supabase
       .from('cards')
@@ -126,6 +129,7 @@ export default function DashboardPage() {
   };
 
   const handleSignOut = async () => {
+    const supabase = getSupabase();
     await supabase.auth.signOut();
     router.push('/login');
   };

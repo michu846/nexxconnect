@@ -1,21 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function DashboardPage() {
-  const supabase = createClientComponentClient();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [user, setUser] = useState<any>(null);
 
-  // All form fields matching Admin
+  // Form states matching Admin
   const [handle, setHandle] = useState('');
   const [fullName, setFullName] = useState('');
   const [jobTitle, setJobTitle] = useState('');
@@ -47,7 +50,7 @@ export default function DashboardPage() {
         .from('cards')
         .select('*')
         .eq('user_id', session.user.id)
-        .single();
+        .maybeSingle();
 
       if (card) {
         setHandle(card.handle || '');
@@ -70,7 +73,7 @@ export default function DashboardPage() {
     };
 
     fetchUserData();
-  }, [supabase, router]);
+  }, [router]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -113,7 +116,7 @@ export default function DashboardPage() {
     setSaving(false);
 
     if (error) {
-      alert(`Failed to save card: ${error.message}`);
+      alert(`Failed to save: ${error.message}`);
     } else {
       alert('Card updated successfully!');
     }
@@ -159,11 +162,6 @@ export default function DashboardPage() {
               required
               className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
             />
-            {handle && (
-              <p className="text-xs text-blue-400 mt-1">
-                Your Link: nexxconnect.vercel.app/{handle}
-              </p>
-            )}
           </div>
 
           <div>
@@ -210,7 +208,6 @@ export default function DashboardPage() {
             <label className="text-xs text-slate-400">Location / Address</label>
             <input
               type="text"
-              placeholder="e.g. New York, USA or Maps link"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
@@ -241,7 +238,6 @@ export default function DashboardPage() {
             <label className="text-xs text-slate-400">Facebook Link</label>
             <input
               type="text"
-              placeholder="https://facebook.com/..."
               value={facebook}
               onChange={(e) => setFacebook(e.target.value)}
               className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
@@ -316,7 +312,6 @@ export default function DashboardPage() {
             <label className="text-xs text-slate-400">Profile Photo URL (Alternative)</label>
             <input
               type="text"
-              placeholder="https://..."
               value={avatarUrl}
               onChange={(e) => setAvatarUrl(e.target.value)}
               className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"

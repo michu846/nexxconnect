@@ -11,32 +11,36 @@ export default function AdminPage() {
     e.preventDefault();
     setLoading(true);
 
-    const res = await fetch('/api/admin/create-user', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ handle, password }),
-    });
+    try {
+      const res = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ handle, password }),
+      });
 
-    const data = await res.json();
+      const data = await res.json().catch(() => null);
 
-    if (res.ok) {
-      alert(`Client account created successfully!\n\nHandle: ${data.handle}\nPassword: ${password}`);
-      setHandle('');
-      setPassword('');
-    } else {
-      alert('Error creating account: ' + data.error);
+      if (res.ok && data?.success) {
+        alert(`Account created successfully!\n\nHandle: ${data.handle}\nPassword: ${password}`);
+        setHandle('');
+        setPassword('');
+      } else {
+        alert(`Error: ${data?.error || `Server responded with status ${res.status}`}`);
+      }
+    } catch (err: any) {
+      alert(`Client Network Error: ${err.message || 'Failed to reach API endpoint'}`);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
       <form onSubmit={handleCreateClient} className="w-full max-w-md bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
-        <h1 className="text-xl font-bold">Admin Panel: Create Client</h1>
+        <h1 className="text-xl font-bold">Admin Panel: Create Client Account</h1>
 
         <div>
-          <label className="text-xs text-slate-400">Handle / Username</label>
+          <label className="text-xs text-slate-400">Client Handle / Username</label>
           <input
             type="text"
             placeholder="e.g. john"
@@ -48,10 +52,10 @@ export default function AdminPage() {
         </div>
 
         <div>
-          <label className="text-xs text-slate-400">Password</label>
+          <label className="text-xs text-slate-400">Set Password for Client (Min 8 chars)</label>
           <input
             type="text"
-            placeholder="Assign password"
+            placeholder="e.g. ClientPass123"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

@@ -1,13 +1,26 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Fallback checks prevent fetch failed crashes on Vercel serverless environment
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+});
 
 export async function POST(req: Request) {
   try {
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json(
+        { error: 'Server environment variables missing on Vercel.' },
+        { status: 500 }
+      );
+    }
+
     const { handle, password } = await req.json();
     const cleanHandle = handle.toLowerCase().trim();
     const virtualEmail = `${cleanHandle}@nexxconnect.internal`;
@@ -23,7 +36,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: authError.message }, { status: 400 });
     }
 
-    // 2. Insert row into cards table
+    // 2. Pre-create card row
     const { error: cardError } = await supabaseAdmin
       .from('cards')
       .insert([

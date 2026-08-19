@@ -1,72 +1,4 @@
-import { NextResponse } from 'next/server';
-
-export async function POST(req: Request) {
-  try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim().replace(/\/+$/, '');
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        { error: `Missing Envs: URL=${!!supabaseUrl}, KEY=${!!serviceRoleKey}` },
-        { status: 500 }
-      );
-    }
-
-    const { handle, password } = await req.json();
-    const cleanHandle = handle?.toLowerCase().trim();
-    const virtualEmail = `${cleanHandle}@nexxconnect.internal`;
-
-    // 1. Create auth user
-    const authRes = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': serviceRoleKey,
-        'Authorization': `Bearer ${serviceRoleKey}`,
-      },
-      body: JSON.stringify({
-        email: virtualEmail,
-        password: password,
-        email_confirm: true,
-      }),
-    });
-
-    const authData = await authRes.json();
-
-    if (!authRes.ok) {
-      return NextResponse.json({ error: `Auth Error: ${JSON.stringify(authData)}` }, { status: 400 });
-    }
-
-    // 2. Insert card row
-    const dbRes = await fetch(`${supabaseUrl}/rest/v1/cards`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': serviceRoleKey,
-        'Authorization': `Bearer ${serviceRoleKey}`,
-        'Prefer': 'return=minimal',
-      },
-      body: JSON.stringify({
-        user_id: authData.id,
-        handle: cleanHandle,
-        full_name: cleanHandle,
-      }),
-    });
-
-    if (!dbRes.ok) {
-      const dbError = await dbRes.json();
-      return NextResponse.json({ error: `DB Error: ${JSON.stringify(dbError)}` }, { status: 400 });
-    }
-
-    return NextResponse.json({ success: true, handle: cleanHandle });
-  } catch (err: any) {
-    // Return the actual network or execution cause
-    return NextResponse.json(
-      { error: `Network/Fetch failure: ${err?.message || err?.cause || String(err)}` },
-      { status: 500 }
-    );
-  }
-}import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
@@ -79,7 +11,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
     }
 
-    // Initialize Supabase Admin Client
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: {
         autoRefreshToken: false,
@@ -137,7 +68,6 @@ export async function POST(req: Request) {
 
     if (dbError) {
       console.error('DB error:', dbError);
-      // Roll back created auth user
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
       return NextResponse.json({ error: 'Could not create profile' }, { status: 400 });
     }

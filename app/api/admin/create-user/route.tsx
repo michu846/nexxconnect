@@ -1,20 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+
 export async function POST(req: Request) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim().replace(/\/+$/, '');
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
     if (!supabaseUrl || !serviceRoleKey) {
-      console.error(`Missing Envs: URL=${!!supabaseUrl}, KEY=${!!serviceRoleKey}`);
-      return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
+      return NextResponse.json({ error: 'Server misconfiguration: Missing Envs' }, { status: 500 });
     }
 
+    // Force standard global fetch configuration
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
+      },
+      global: {
+        fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }),
       },
     });
 
@@ -28,7 +33,7 @@ export async function POST(req: Request) {
 
     if (!/^[a-z0-9_]{3,20}$/.test(cleanHandle)) {
       return NextResponse.json(
-        { error: 'Handle must be 3-20 characters, letters/numbers/underscores only' },
+        { error: 'Handle must be 3-20 characters (letters, numbers, underscores)' },
         { status: 400 }
       );
     }
@@ -50,7 +55,6 @@ export async function POST(req: Request) {
     });
 
     if (authError) {
-      console.error('Auth error:', authError);
       if (/already/i.test(authError.message)) {
         return NextResponse.json({ error: 'Handle is already taken' }, { status: 409 });
       }
@@ -67,14 +71,15 @@ export async function POST(req: Request) {
     ]);
 
     if (dbError) {
-      console.error('DB error:', dbError);
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-      return NextResponse.json({ error: 'Could not create profile' }, { status: 400 });
+      return NextResponse.json({ error: dbError.message || 'Could not create card profile' }, { status: 400 });
     }
 
     return NextResponse.json({ success: true, handle: cleanHandle });
   } catch (err: any) {
-    console.error('Signup route failure:', err);
-    return NextResponse.json({ error: err?.message || 'Unexpected server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: err?.message ? `Execution error: ${err.message}` : 'Unexpected server error' },
+      { status: 500 }
+    );
   }
 }

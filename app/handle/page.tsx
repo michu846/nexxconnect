@@ -191,4 +191,4 @@ export default async function PublicCardPage({
       </div>
     </main>
   );
-}
+} 

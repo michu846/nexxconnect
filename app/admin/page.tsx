@@ -13,6 +13,7 @@ export default function AdminPage() {
   const [handle, setHandle] = useState('');
   const [theme, setTheme] = useState('classic-dark');
   const [photoUrl, setPhotoUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [fullName, setFullName] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [phone, setPhone] = useState('');
@@ -46,6 +47,35 @@ export default function AdminPage() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+  };
+
+  // Upload image to Supabase Storage
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setUploading(true);
+      if (!event.target.files || event.target.files.length === 0) {
+        throw new Error('You must select an image to upload.');
+      }
+
+      const file = event.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${Date.now()}-${Math.random()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      setPhotoUrl(data.publicUrl);
+    } catch (error: any) {
+      alert(error.message || 'Error uploading image');
+    } finally {
+      setUploading(false);
+    }
   };
 
   // Load existing card data
@@ -115,14 +145,12 @@ export default function AdminPage() {
     );
   }
 
-  // 1. LOGIN SCREEN
   if (!session) {
     return (
       <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-4">
         <form onSubmit={handleLogin} className="bg-slate-800 p-8 rounded-2xl border border-slate-700 w-full max-w-sm flex flex-col gap-4 shadow-xl">
           <h1 className="text-2xl font-bold text-center text-white">NexxConnect Admin</h1>
           <p className="text-sm text-slate-400 text-center mb-2">Sign in to edit contact cards</p>
-          
           <div>
             <label className="text-xs text-slate-400 mb-1 block">Email</label>
             <input
@@ -130,11 +158,10 @@ export default function AdminPage() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-blue-500"
+              className="w-full p-3 rounded-lg bg-slate-900 border border-slate-700 text-white"
               required
             />
           </div>
-
           <div>
             <label className="text-xs text-slate-400 mb-1 block">Password</label>
             <input
@@ -142,11 +169,10 @@ export default function AdminPage() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none focus:border-blue-500"
+              className="w-full p-3 rounded-lg bg-slate-900 border border-slate-700 text-white"
               required
             />
           </div>
-
           <button type="submit" className="w-full py-3 mt-2 bg-blue-600 hover:bg-blue-500 font-semibold rounded-lg text-white transition">
             Sign In
           </button>
@@ -155,10 +181,8 @@ export default function AdminPage() {
     );
   }
 
-  // 2. FULL ADMIN DASHBOARD
   return (
     <div className="min-h-screen bg-slate-900 text-white pb-12">
-      {/* Header bar */}
       <div className="p-4 bg-slate-800 border-b border-slate-700 flex justify-between items-center px-6 mb-6">
         <span className="text-sm text-slate-300">
           Logged in as: <strong className="text-white">{session.user.email}</strong>
@@ -187,7 +211,7 @@ export default function AdminPage() {
                 placeholder="e.g. rahman" 
                 value={handle} 
                 onChange={(e) => setHandle(e.target.value)} 
-                className="w-full p-3 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none"
+                className="w-full p-3 rounded-lg bg-slate-900 border border-slate-700 text-white"
               />
               <button 
                 onClick={loadCard}
@@ -217,15 +241,37 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Profile Photo URL */}
-          <div className="space-y-1">
-            <label className="block text-xs font-semibold text-slate-400">PROFILE PHOTO URL</label>
+          {/* Direct File Upload & Photo URL Section */}
+          <div className="p-4 bg-slate-900/60 rounded-xl border border-slate-700/60 space-y-3">
+            <label className="block text-xs font-semibold text-slate-400">PROFILE PHOTO</label>
+            
+            <div className="flex items-center gap-4">
+              {photoUrl ? (
+                <img src={photoUrl} alt="Preview" className="w-16 h-16 rounded-full object-cover border-2 border-blue-500" />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-slate-500">
+                  No Image
+                </div>
+              )}
+
+              <label className="cursor-pointer px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs font-semibold text-white transition">
+                {uploading ? 'Uploading...' : 'Choose File'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
             <input 
               type="text" 
-              placeholder="https://..." 
+              placeholder="Or paste URL (https://...)" 
               value={photoUrl} 
               onChange={(e) => setPhotoUrl(e.target.value)} 
-              className="w-full p-3 rounded-lg bg-slate-900 border border-slate-700 text-white"
+              className="w-full p-3 rounded-lg bg-slate-900 border border-slate-700 text-white text-xs"
             />
           </div>
 

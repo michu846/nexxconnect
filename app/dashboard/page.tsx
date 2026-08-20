@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
-
-export const dynamic = 'force-dynamic';
+import { supabase } from '@/lib/supabase';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -32,46 +30,44 @@ export default function DashboardPage() {
   const [googleReviews, setGoogleReviews] = useState('');
   const [paymentLink, setPaymentLink] = useState('');
 
-  const getSupabase = () => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-    return createClient(url, key);
-  };
-
   useEffect(() => {
     const fetchUserData = async () => {
-      const supabase = getSupabase();
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login');
-        return;
-      }
-      setUser(session.user);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/login');
+          return;
+        }
+        setUser(session.user);
 
-      const { data: card } = await supabase
-        .from('cards')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
+        const { data: card } = await supabase
+          .from('cards')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
 
-      if (card) {
-        setHandle(card.handle || '');
-        setFullName(card.full_name || '');
-        setJobTitle(card.job_title || '');
-        setPhone(card.phone || '');
-        setWhatsapp(card.whatsapp || '');
-        setLocation(card.location || '');
-        setBio(card.bio || '');
-        setTheme(card.theme || 'dark');
-        setAvatarUrl(card.avatar_url || '');
-        setWebsite(card.website || '');
-        setFacebook(card.facebook || '');
-        setInstagram(card.instagram || '');
-        setLinkedin(card.linkedin || '');
-        setGoogleReviews(card.google_reviews || '');
-        setPaymentLink(card.payment_link || '');
+        if (card) {
+          setHandle(card.handle || '');
+          setFullName(card.full_name || '');
+          setJobTitle(card.job_title || '');
+          setPhone(card.phone || '');
+          setWhatsapp(card.whatsapp || '');
+          setLocation(card.location || '');
+          setBio(card.bio || '');
+          setTheme(card.theme || 'dark');
+          setAvatarUrl(card.avatar_url || '');
+          setWebsite(card.website || '');
+          setFacebook(card.facebook || '');
+          setInstagram(card.instagram || '');
+          setLinkedin(card.linkedin || '');
+          setGoogleReviews(card.google_reviews || '');
+          setPaymentLink(card.payment_link || '');
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchUserData();
@@ -93,13 +89,12 @@ export default function DashboardPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const supabase = getSupabase();
 
     const { error } = await supabase
       .from('cards')
       .upsert(
         {
-          user_id: user.id,
+          user_id: user?.id,
           handle: handle.toLowerCase().trim(),
           full_name: fullName,
           job_title: jobTitle,
@@ -129,7 +124,6 @@ export default function DashboardPage() {
   };
 
   const handleSignOut = async () => {
-    const supabase = getSupabase();
     await supabase.auth.signOut();
     router.push('/login');
   };

@@ -11,6 +11,7 @@ export default function PublicCardPage() {
   const [loading, setLoading] = useState(true);
   const [card, setCard] = useState<any>(null);
   const [notFound, setNotFound] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     if (!handle) return;
@@ -63,16 +64,30 @@ export default function PublicCardPage() {
     );
   }
 
+  // Get initials for fallback icon
+  const initials = card.full_name
+    ? card.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'NC';
+
   return (
     <div className="min-h-screen bg-slate-950 text-white p-4 sm:p-8 flex flex-col items-center justify-center">
       <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6 text-center shadow-2xl">
-        {card.avatar_url && (
-          <img
-            src={card.avatar_url}
-            alt={card.full_name || 'Profile'}
-            className="w-28 h-28 rounded-full mx-auto object-cover border-4 border-slate-800 shadow-md"
-          />
-        )}
+        
+        {/* Avatar Container */}
+        <div className="relative w-28 h-28 mx-auto">
+          {card.avatar_url && !imgError ? (
+            <img
+              src={card.avatar_url}
+              alt=""
+              onError={() => setImgError(true)}
+              className="w-28 h-28 rounded-full object-cover border-4 border-slate-800 shadow-md"
+            />
+          ) : (
+            <div className="w-28 h-28 rounded-full bg-slate-800 border-4 border-slate-700 flex items-center justify-center text-xl font-bold text-slate-300">
+              {initials}
+            </div>
+          )}
+        </div>
 
         <div className="space-y-1">
           <h1 className="text-2xl font-bold">{card.full_name || 'Anonymous'}</h1>
@@ -90,6 +105,7 @@ export default function PublicCardPage() {
           </p>
         )}
 
+        {/* Action & Social Links */}
         <div className="space-y-2 pt-2">
           {card.phone && (
             <a
@@ -116,7 +132,17 @@ export default function PublicCardPage() {
               rel="noopener noreferrer"
               className="block w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs transition border border-slate-700"
             >
-              🌐 Visit Website
+              🌐 Website
+            </a>
+          )}
+          {card.facebook && (
+            <a
+              href={card.facebook.startsWith('http') ? card.facebook : `https://${card.facebook}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full py-3 bg-blue-700 hover:bg-blue-600 text-white font-semibold rounded-xl text-xs transition"
+            >
+              📘 Facebook
             </a>
           )}
           {card.instagram && (
@@ -127,6 +153,36 @@ export default function PublicCardPage() {
               className="block w-full py-3 bg-pink-600 hover:bg-pink-500 font-semibold rounded-xl text-xs transition"
             >
               📸 Instagram
+            </a>
+          )}
+          {card.linkedin && (
+            <a
+              href={card.linkedin.startsWith('http') ? card.linkedin : `https://${card.linkedin}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full py-3 bg-sky-700 hover:bg-sky-600 text-white font-semibold rounded-xl text-xs transition"
+            >
+              💼 LinkedIn
+            </a>
+          )}
+          {card.google_reviews && (
+            <a
+              href={card.google_reviews.startsWith('http') ? card.google_reviews : `https://${card.google_reviews}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-xl text-xs transition"
+            >
+              ⭐ Google Reviews
+            </a>
+          )}
+          {card.payment_link && (
+            <a
+              href={card.payment_link.startsWith('http') ? card.payment_link : `https://${card.payment_link}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl text-xs transition"
+            >
+              💳 Payment / UPI
             </a>
           )}
         </div>

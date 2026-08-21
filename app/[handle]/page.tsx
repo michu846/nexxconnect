@@ -69,9 +69,45 @@ export default function PublicCardPage() {
     ? card.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
     : 'NC';
 
+  // Define Theme Dynamic Classes
+  const selectedTheme = card.theme || 'dark';
+
+  const themeStyles: Record<string, { pageBg: string; cardBg: string; textColor: string; subTextColor: string; border: string }> = {
+    dark: {
+      pageBg: 'bg-slate-950',
+      cardBg: 'bg-slate-900',
+      textColor: 'text-white',
+      subTextColor: 'text-slate-400',
+      border: 'border-slate-800',
+    },
+    light: {
+      pageBg: 'bg-slate-100',
+      cardBg: 'bg-white',
+      textColor: 'text-slate-900',
+      subTextColor: 'text-slate-600',
+      border: 'border-slate-200 shadow-xl',
+    },
+    gradient: {
+      pageBg: 'bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-950',
+      cardBg: 'bg-slate-900/90 backdrop-blur-md',
+      textColor: 'text-white',
+      subTextColor: 'text-purple-200',
+      border: 'border-purple-500/30',
+    },
+    glass: {
+      pageBg: 'bg-gradient-to-tr from-sky-900 via-slate-950 to-indigo-950',
+      cardBg: 'bg-white/10 backdrop-blur-lg',
+      textColor: 'text-white',
+      subTextColor: 'text-sky-200',
+      border: 'border-white/20 shadow-2xl',
+    },
+  };
+
+  const theme = themeStyles[selectedTheme] || themeStyles.dark;
+
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-4 sm:p-8 flex flex-col items-center justify-center">
-      <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6 text-center shadow-2xl">
+    <div className={`min-h-screen ${theme.pageBg} ${theme.textColor} p-4 sm:p-8 flex flex-col items-center justify-center transition-colors duration-300`}>
+      <div className={`w-full max-w-sm ${theme.cardBg} border ${theme.border} rounded-3xl p-6 space-y-6 text-center shadow-2xl`}>
         
         {/* Avatar Container */}
         <div className="relative w-28 h-28 mx-auto">
@@ -80,7 +116,7 @@ export default function PublicCardPage() {
               src={card.avatar_url}
               alt=""
               onError={() => setImgError(true)}
-              className="w-28 h-28 rounded-full object-cover border-4 border-slate-800 shadow-md"
+              className="w-28 h-28 rounded-full object-cover border-4 border-slate-700/50 shadow-md"
             />
           ) : (
             <div className="w-28 h-28 rounded-full bg-slate-800 border-4 border-slate-700 flex items-center justify-center text-xl font-bold text-slate-300">
@@ -92,15 +128,15 @@ export default function PublicCardPage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-bold">{card.full_name || 'Anonymous'}</h1>
           {card.job_title && (
-            <p className="text-xs font-medium text-slate-400">{card.job_title}</p>
+            <p className={`text-xs font-medium ${theme.subTextColor}`}>{card.job_title}</p>
           )}
           {card.location && (
-            <p className="text-xs text-slate-500">📍 {card.location}</p>
+            <p className={`text-xs ${theme.subTextColor}`}>📍 {card.location}</p>
           )}
         </div>
 
         {card.bio && (
-          <p className="text-xs text-slate-300 bg-slate-800/50 p-3 rounded-xl border border-slate-800">
+          <p className={`text-xs ${theme.textColor} bg-black/20 p-3 rounded-xl border border-white/10`}>
             {card.bio}
           </p>
         )}
@@ -110,7 +146,7 @@ export default function PublicCardPage() {
           {card.phone && (
             <a
               href={`tel:${card.phone}`}
-              className="block w-full py-3 bg-blue-600 hover:bg-blue-500 font-semibold rounded-xl text-xs transition"
+              className="block w-full py-3 bg-blue-600 hover:bg-blue-500 font-semibold rounded-xl text-xs text-white transition"
             >
               📞 Call Phone
             </a>
@@ -120,7 +156,7 @@ export default function PublicCardPage() {
               href={`https://wa.me/${card.whatsapp.replace(/\D/g, '')}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full py-3 bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-xl text-xs transition"
+              className="block w-full py-3 bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-xl text-xs text-white transition"
             >
               💬 WhatsApp
             </a>
@@ -130,7 +166,7 @@ export default function PublicCardPage() {
               href={card.website.startsWith('http') ? card.website : `https://${card.website}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs transition border border-slate-700"
+              className="block w-full py-3 bg-slate-800 hover:bg-slate-700 font-semibold rounded-xl text-xs text-white transition border border-slate-700"
             >
               🌐 Website
             </a>
@@ -140,7 +176,7 @@ export default function PublicCardPage() {
               href={card.facebook.startsWith('http') ? card.facebook : `https://${card.facebook}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full py-3 bg-blue-700 hover:bg-blue-600 text-white font-semibold rounded-xl text-xs transition"
+              className="block w-full py-3 bg-blue-700 hover:bg-blue-600 font-semibold rounded-xl text-xs text-white transition"
             >
               📘 Facebook
             </a>
@@ -150,7 +186,7 @@ export default function PublicCardPage() {
               href={card.instagram.startsWith('http') ? card.instagram : `https://${card.instagram}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full py-3 bg-pink-600 hover:bg-pink-500 font-semibold rounded-xl text-xs transition"
+              className="block w-full py-3 bg-pink-600 hover:bg-pink-500 font-semibold rounded-xl text-xs text-white transition"
             >
               📸 Instagram
             </a>
@@ -160,7 +196,7 @@ export default function PublicCardPage() {
               href={card.linkedin.startsWith('http') ? card.linkedin : `https://${card.linkedin}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full py-3 bg-sky-700 hover:bg-sky-600 text-white font-semibold rounded-xl text-xs transition"
+              className="block w-full py-3 bg-sky-700 hover:bg-sky-600 font-semibold rounded-xl text-xs text-white transition"
             >
               💼 LinkedIn
             </a>
@@ -170,7 +206,7 @@ export default function PublicCardPage() {
               href={card.google_reviews.startsWith('http') ? card.google_reviews : `https://${card.google_reviews}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-xl text-xs transition"
+              className="block w-full py-3 bg-amber-600 hover:bg-amber-500 font-semibold rounded-xl text-xs text-white transition"
             >
               ⭐ Google Reviews
             </a>
@@ -180,7 +216,7 @@ export default function PublicCardPage() {
               href={card.payment_link.startsWith('http') ? card.payment_link : `https://${card.payment_link}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-xl text-xs transition"
+              className="block w-full py-3 bg-purple-600 hover:bg-purple-500 font-semibold rounded-xl text-xs text-white transition"
             >
               💳 Payment / UPI
             </a>

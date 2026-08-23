@@ -1,63 +1,67 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+export const dynamic = 'force-dynamic'; // Prevent Next.js from caching empty responses
 
-// GET: Fetch all auth users merged with their card handles
 export async function GET() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return NextResponse.json({ 
+      error: 'Missing environment variables. Check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.' 
+    }, { status: 500 });
+  }
+
+  // Create client directly with service role key
+  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+
   try {
+    // 1. Fetch Auth Users
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-    
+
     if (authError) {
-      console.error('Auth Error:', authError);
-      return NextResponse.json({ error: authError.message }, { status: 400 });
+      return NextResponse.json({ error: `Auth Error: ${authError.message}` }, { status: 400 });
     }
 
+    // 2. Fetch Cards Table
     const { data: cards, error: cardsError } = await supabaseAdmin
       .from('cards')
-      .select('user_id, handle, full_name, phone');
+      .select('user_id, handle, full_name');
 
-    if (cardsError) {
-      console.error('Cards Error:', cardsError);
-    }
-
+    // 3. Map Users
     const users = (authData?.users || []).map((u) => {
       const card = cards?.find((c) => c.user_id === u.id);
       return {
         id: u.id,
-        email: u.email || 'No email',
-        createdAt: u.created_at,
+        email: u.email || 'No Email',
         handle: card?.handle || 'no-handle',
         fullName: card?.full_name || '',
-        phone: card?.phone || '',
       };
     });
 
-    return NextResponse.json({ users });
-  } catch (error: any) {
-    console.error('Server Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ users, count: users.length });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
-// POST: Reset customer password
 export async function POST(req: Request) {
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
   try {
     const { userId, newPassword } = await req.json();
-
-    if (!userId || !newPassword || newPassword.length < 8) {
-      return NextResponse.json({ error: 'Valid User ID and 8+ character password required' }, { status: 400 });
-    }
 
     const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
       password: newPassword,
     });
 
     if (error) throw error;
-
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 });

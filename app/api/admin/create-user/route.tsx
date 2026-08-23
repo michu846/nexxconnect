@@ -6,43 +6,59 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function POST(req: Request) {
+// GET: Fetch all auth users merged with their card handles
+export async function GET() {
   try {
-    const body = await req.json();
-    const { email, password, handle, fullName } = body;
-
-    if (!email || !password || !handle) {
-      return NextResponse.json({ error: 'Email, handle, and password are required' }, { status: 400 });
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+    
+    if (authError) {
+      console.error('Auth Error:', authError);
+      return NextResponse.json({ error: authError.message }, { status: 400 });
     }
 
-    if (password.length < 8) {
-      return NextResponse.json({ error: 'Password must be at least 8 characters long' }, { status: 400 });
+    const { data: cards, error: cardsError } = await supabaseAdmin
+      .from('cards')
+      .select('user_id, handle, full_name, phone');
+
+    if (cardsError) {
+      console.error('Cards Error:', cardsError);
     }
 
-    // 1. Create account in Supabase Auth with custom password
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
+    const users = (authData?.users || []).map((u) => {
+      const card = cards?.find((c) => c.user_id === u.id);
+      return {
+        id: u.id,
+        email: u.email || 'No email',
+        createdAt: u.created_at,
+        handle: card?.handle || 'no-handle',
+        fullName: card?.full_name || '',
+        phone: card?.phone || '',
+      };
     });
 
-    if (authError) throw authError;
+    return NextResponse.json({ users });
+  } catch (error: any) {
+    console.error('Server Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
 
-    // 2. Link card handle to newly created user UUID
-    const { error: cardError } = await supabaseAdmin
-      .from('cards')
-      .upsert(
-        {
-          user_id: authUser.user.id,
-          handle: handle.toLowerCase().trim(),
-          full_name: fullName || '',
-        },
-        { onConflict: 'handle' }
-      );
+// POST: Reset customer password
+export async function POST(req: Request) {
+  try {
+    const { userId, newPassword } = await req.json();
 
-    if (cardError) throw cardError;
+    if (!userId || !newPassword || newPassword.length < 8) {
+      return NextResponse.json({ error: 'Valid User ID and 8+ character password required' }, { status: 400 });
+    }
 
-    return NextResponse.json({ success: true, userId: authUser.user.id });
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      password: newPassword,
+    });
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }

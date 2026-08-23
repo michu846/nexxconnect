@@ -41,8 +41,10 @@ export default function AdminPage() {
       const data = await res.json();
       if (data.users) {
         setUserList(data.users);
+      } else if (data.error) {
+        alert(`Failed to load users: ${data.error}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching users:', err);
     } finally {
       setLoadingUsers(false);
@@ -252,10 +254,9 @@ export default function AdminPage() {
                   >
                     <div className="flex justify-between items-start">
                       <div>
-                        {/* HANDLE & LIVE LINK */}
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-blue-400 text-sm">@{usr.handle}</span>
-                          {usr.handle !== 'No handle set' && (
+                          {usr.handle !== 'no-handle' && (
                             <a
                               href={`https://nexxconnect.vercel.app/${usr.handle}`}
                               target="_blank"
@@ -281,7 +282,6 @@ export default function AdminPage() {
                       </button>
                     </div>
 
-                    {/* RESET PASSWORD INPUT */}
                     {selectedUserId === usr.id && (
                       <div className="mt-2 pt-2 border-t border-slate-800 space-y-2">
                         <input

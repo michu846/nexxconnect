@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import QRCode from 'qrcode';
 
 export default function CustomerDashboard() {
-  const router = Router();
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -143,7 +143,7 @@ export default function CustomerDashboard() {
             href={`/${card.handle}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl font-semibold transition"
+            className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl font-semibold transition flex items-center gap-1"
           >
             🔗 View Live Card
           </a>

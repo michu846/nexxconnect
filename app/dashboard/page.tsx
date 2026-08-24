@@ -1,116 +1,99 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import QRCode from 'qrcode';
 
-export default function CustomerDashboard() {
+export default function DashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
-  // Card details state
-  const [card, setCard] = useState<any>({
-    handle: '',
-    full_name: '',
-    job_title: '',
-    location: '',
-    bio: '',
-    phone: '',
-    whatsapp: '',
-    website: '',
-    facebook: '',
-    instagram: '',
-    linkedin: '',
-    google_reviews: '',
-    payment_link: '',
-    avatar_url: '',
-    theme: 'dark',
-  });
-
-  // QR Code State
-  const [qrUrl, setQrUrl] = useState<string>('');
+  // Card Profile State
+  const [fullName, setFullName] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
+  const [bio, setBio] = useState('');
+  const [phone, setPhone] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [website, setWebsite] = useState('');
+  const [location, setLocation] = useState('');
+  const [instagram, setInstagram] = useState('');
+  const [facebook, setFacebook] = useState('');
+  const [linkedin, setLinkedin] = useState('');
+  const [googleReview, setGoogleReview] = useState('');
+  const [handle, setHandle] = useState('');
 
   useEffect(() => {
-    fetchProfile();
+    checkUserAndLoadCard();
   }, []);
 
-  const fetchProfile = async () => {
+  const checkUserAndLoadCard = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+      if (!currentUser) {
         router.push('/login');
         return;
       }
 
-      const { data, error } = await supabase
+      setUser(currentUser);
+
+      // Fetch user card profile
+      const { data: card, error } = await supabase
         .from('cards')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', currentUser.id)
         .single();
 
-      if (data) {
-        setCard(data);
-        generateQRCode(data.handle);
+      if (card) {
+        setFullName(card.full_name || '');
+        setJobTitle(card.job_title || '');
+        setBio(card.bio || '');
+        setPhone(card.phone || '');
+        setWhatsapp(card.whatsapp || '');
+        setWebsite(card.website || '');
+        setLocation(card.location || '');
+        setInstagram(card.instagram || '');
+        setFacebook(card.facebook || '');
+        setLinkedin(card.linkedin || '');
+        setGoogleReview(card.google_review || '');
+        setHandle(card.handle || '');
       }
     } catch (err) {
-      console.error('Error loading dashboard profile:', err);
+      console.error('Error loading dashboard:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const generateQRCode = (handle: string) => {
-    if (!handle) return;
-    const publicUrl = `https://nexxconnect.vercel.app/${handle}`;
-    QRCode.toDataURL(publicUrl, { width: 600, margin: 2 }, (err, url) => {
-      if (!err) setQrUrl(url);
-    });
-  };
-
-  const handleDownloadQR = () => {
-    if (!qrUrl) return;
-    const downloadLink = document.createElement('a');
-    downloadLink.href = qrUrl;
-    downloadLink.download = `${card.handle || 'business-card'}-qr.png`;
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
+
     setSaving(true);
-
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const { error } = await supabase
         .from('cards')
         .update({
-          full_name: card.full_name,
-          job_title: card.job_title,
-          location: card.location,
-          bio: card.bio,
-          phone: card.phone,
-          whatsapp: card.whatsapp,
-          website: card.website,
-          facebook: card.facebook,
-          instagram: card.instagram,
-          linkedin: card.linkedin,
-          google_reviews: card.google_reviews,
-          payment_link: card.payment_link,
-          avatar_url: card.avatar_url,
-          theme: card.theme,
+          full_name: fullName,
+          job_title: jobTitle,
+          bio,
+          phone,
+          whatsapp,
+          website,
+          location,
+          instagram,
+          facebook,
+          linkedin,
+          google_review: googleReview,
         })
         .eq('user_id', user.id);
 
       if (error) throw error;
-      alert('Card updated successfully!');
+      alert('Profile updated successfully!');
     } catch (err: any) {
-      alert(`Error updating card: ${err.message}`);
+      alert(`Error saving profile: ${err.message}`);
     } finally {
       setSaving(false);
     }
@@ -124,7 +107,7 @@ export default function CustomerDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
-        <div className="animate-pulse text-sm text-slate-400">Loading dashboard...</div>
+        <div className="animate-pulse text-sm text-slate-400">Loading your profile dashboard...</div>
       </div>
     );
   }
@@ -132,176 +115,179 @@ export default function CustomerDashboard() {
   return (
     <div className="min-h-screen bg-slate-950 text-white p-4 sm:p-8 flex flex-col items-center">
       
-      {/* Top Bar */}
-      <div className="w-full max-w-4xl flex justify-between items-center bg-slate-900 border border-slate-800 p-4 rounded-2xl mb-6 shadow-lg">
+      {/* Top Header */}
+      <div className="w-full max-w-2xl flex justify-between items-center bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg mb-6">
         <div>
-          <h1 className="text-xl font-bold">Manage Your Business Card</h1>
-          <p className="text-xs text-blue-400 font-mono">https://nexxconnect.vercel.app/{card.handle}</p>
-        </div>
-        <div className="flex gap-2">
-          <a
-            href={`/${card.handle}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl font-semibold transition flex items-center gap-1"
-          >
-            🔗 View Live Card
-          </a>
-          <button
-            onClick={handleLogout}
-            className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl font-semibold transition border border-slate-700"
-          >
-            Logout
-          </button>
-        </div>
-      </div>
-
-      <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-6">
-
-        {/* QR CODE DOWNLOAD BOX */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4 shadow-xl text-center md:col-span-1 h-fit">
-          <h2 className="text-lg font-bold">Your Card QR Code</h2>
-          <p className="text-xs text-slate-400">Scan or download to print on physical cards.</p>
-
-          {qrUrl ? (
-            <div className="bg-white p-4 rounded-2xl inline-block shadow-inner">
-              <img src={qrUrl} alt="QR Code" className="w-44 h-44 mx-auto" />
-            </div>
-          ) : (
-            <div className="w-44 h-44 bg-slate-800 rounded-2xl animate-pulse mx-auto" />
-          )}
-
-          <button
-            onClick={handleDownloadQR}
-            disabled={!qrUrl}
-            className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl text-white text-xs transition shadow-lg flex items-center justify-center gap-2"
-          >
-            📥 Download QR Code (PNG)
-          </button>
-        </div>
-
-        {/* EDIT CARD FORM */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4 shadow-xl md:col-span-2">
-          <h2 className="text-lg font-bold border-b border-slate-800 pb-2">Profile Details</h2>
-
-          <form onSubmit={handleSave} className="space-y-4 text-xs">
-            <div>
-              <label className="text-slate-400">Theme Style</label>
-              <select
-                value={card.theme}
-                onChange={(e) => setCard({ ...card, theme: e.target.value })}
-                className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
-              >
-                <option value="dark">Dark</option>
-                <option value="light">Light</option>
-                <option value="gradient">Gradient</option>
-                <option value="glass">Glassmorphism</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-slate-400">Full Name</label>
-              <input
-                type="text"
-                value={card.full_name || ''}
-                onChange={(e) => setCard({ ...card, full_name: e.target.value })}
-                placeholder="John Doe"
-                className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="text-slate-400">Job Title / Tagline</label>
-              <input
-                type="text"
-                value={card.job_title || ''}
-                onChange={(e) => setCard({ ...card, job_title: e.target.value })}
-                placeholder="Software Engineer"
-                className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="text-slate-400">Location</label>
-              <input
-                type="text"
-                value={card.location || ''}
-                onChange={(e) => setCard({ ...card, location: e.target.value })}
-                placeholder="Dubai, UAE"
-                className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="text-slate-400">Bio</label>
-              <textarea
-                rows={3}
-                value={card.bio || ''}
-                onChange={(e) => setCard({ ...card, bio: e.target.value })}
-                placeholder="Brief intro..."
-                className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none resize-none"
-              />
-            </div>
-
-            <div className="pt-2 border-t border-slate-800 space-y-3">
-              <h3 className="font-bold text-slate-300">Contact & Links</h3>
-
-              <div>
-                <label className="text-slate-400">Phone Number</label>
-                <input
-                  type="text"
-                  value={card.phone || ''}
-                  onChange={(e) => setCard({ ...card, phone: e.target.value })}
-                  placeholder="+971 50 123 4567"
-                  className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400">WhatsApp Number</label>
-                <input
-                  type="text"
-                  value={card.whatsapp || ''}
-                  onChange={(e) => setCard({ ...card, whatsapp: e.target.value })}
-                  placeholder="+971501234567"
-                  className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400">Website URL</label>
-                <input
-                  type="text"
-                  value={card.website || ''}
-                  onChange={(e) => setCard({ ...card, website: e.target.value })}
-                  placeholder="https://example.com"
-                  className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400">Instagram</label>
-                <input
-                  type="text"
-                  value={card.instagram || ''}
-                  onChange={(e) => setCard({ ...card, instagram: e.target.value })}
-                  placeholder="https://instagram.com/yourhandle"
-                  className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={saving}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-500 font-bold rounded-xl text-white text-xs transition mt-4"
+          <h1 className="text-lg font-bold">Edit Your Digital Card</h1>
+          {handle && (
+            <a
+              href={`https://nexxconnect.vercel.app/${handle}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-400 hover:underline flex items-center gap-1 mt-0.5"
             >
-              {saving ? 'Saving Profile...' : 'Save Profile Changes'}
-            </button>
-          </form>
+              🔗 View Live Profile: nexxconnect.vercel.app/{handle}
+            </a>
+          )}
         </div>
-
+        <button
+          onClick={handleLogout}
+          className="text-xs text-red-400 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 rounded-xl border border-red-500/20 transition"
+        >
+          Sign Out
+        </button>
       </div>
+
+      {/* Profile Form */}
+      <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-2xl space-y-6">
+        <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
+          
+          <div className="border-b border-slate-800 pb-2">
+            <h2 className="text-sm font-bold text-slate-200">Basic Info</h2>
+          </div>
+
+          <div>
+            <label className="text-slate-400">Full Name</label>
+            <input
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="John Doe"
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-400">Job Title / Designation</label>
+            <input
+              type="text"
+              value={jobTitle}
+              onChange={(e) => setJobTitle(e.target.value)}
+              placeholder="Managing Director"
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-400">Bio / About</label>
+            <textarea
+              rows={3}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="Short bio about your business..."
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-400">Location / Address</label>
+            <input
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Dubai, UAE"
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+            />
+          </div>
+
+          <div className="border-b border-slate-800 pb-2 pt-4">
+            <h2 className="text-sm font-bold text-slate-200">Contact Details</h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-slate-400">Phone Number</label>
+              <input
+                type="text"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+971 50 123 4567"
+                className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-400">WhatsApp Number</label>
+              <input
+                type="text"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                placeholder="+971501234567"
+                className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="border-b border-slate-800 pb-2 pt-4">
+            <h2 className="text-sm font-bold text-slate-200">Social Links & Reviews</h2>
+          </div>
+
+          <div>
+            <label className="text-slate-400">⭐ Google Review URL</label>
+            <input
+              type="text"
+              value={googleReview}
+              onChange={(e) => setGoogleReview(e.target.value)}
+              placeholder="https://g.page/r/your-review-link"
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-400">🌐 Website URL</label>
+            <input
+              type="text"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              placeholder="https://yourwebsite.com"
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-400">📘 Facebook Profile / Page URL</label>
+            <input
+              type="text"
+              value={facebook}
+              onChange={(e) => setFacebook(e.target.value)}
+              placeholder="https://facebook.com/yourpage"
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-400">💼 LinkedIn Profile URL</label>
+            <input
+              type="text"
+              value={linkedin}
+              onChange={(e) => setLinkedin(e.target.value)}
+              placeholder="https://linkedin.com/in/username"
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-400">📸 Instagram Username / Link</label>
+            <input
+              type="text"
+              value={instagram}
+              onChange={(e) => setInstagram(e.target.value)}
+              placeholder="username or https://instagram.com/username"
+              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full py-4 bg-blue-600 hover:bg-blue-500 font-bold rounded-xl text-white transition text-xs shadow-lg mt-6"
+          >
+            {saving ? 'Saving Changes...' : 'Save Profile Changes'}
+          </button>
+
+        </form>
+      </div>
+
     </div>
   );
 }

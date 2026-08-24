@@ -47,7 +47,9 @@ export default function PublicCardPage() {
       card.job_title ? `TITLE:${card.job_title}` : '',
       card.phone ? `TEL;TYPE=CELL:${card.phone}` : '',
       card.whatsapp ? `TEL;TYPE=WORK,VOICE:${card.whatsapp}` : '',
+      card.email ? `EMAIL:${card.email}` : '',
       card.website ? `URL:${card.website}` : '',
+      card.linkedin ? `URL;TYPE=LinkedIn:${card.linkedin.startsWith('http') ? card.linkedin : `https://${card.linkedin}`}` : '',
       card.location ? `ADR;TYPE=WORK:;;${card.location};;;;` : '',
       card.bio ? `NOTE:${card.bio}` : '',
       'END:VCARD',
@@ -121,8 +123,10 @@ export default function PublicCardPage() {
           📇 Save Contact to Phone
         </button>
 
-        {/* Contact Actions & Links */}
+        {/* Contact Actions & Social Links */}
         <div className="space-y-2 pt-2 border-t border-slate-800">
+          
+          {/* CALL */}
           {card.phone && (
             <a
               href={`tel:${card.phone}`}
@@ -132,6 +136,7 @@ export default function PublicCardPage() {
             </a>
           )}
 
+          {/* WHATSAPP */}
           {card.whatsapp && (
             <a
               href={`https://wa.me/${card.whatsapp.replace(/[^0-9]/g, '')}`}
@@ -143,6 +148,19 @@ export default function PublicCardPage() {
             </a>
           )}
 
+          {/* GOOGLE REVIEW */}
+          {card.google_review && (
+            <a
+              href={card.google_review.startsWith('http') ? card.google_review : `https://${card.google_review}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3 px-4 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 border border-yellow-500/30"
+            >
+              ⭐ Leave a Google Review
+            </a>
+          )}
+
+          {/* WEBSITE */}
           {card.website && (
             <a
               href={card.website.startsWith('http') ? card.website : `https://${card.website}`}
@@ -154,6 +172,7 @@ export default function PublicCardPage() {
             </a>
           )}
 
+          {/* INSTAGRAM */}
           {card.instagram && (
             <a
               href={card.instagram.startsWith('http') ? card.instagram : `https://instagram.com/${card.instagram}`}
@@ -164,6 +183,31 @@ export default function PublicCardPage() {
               📸 Instagram Profile
             </a>
           )}
+
+          {/* FACEBOOK */}
+          {card.facebook && (
+            <a
+              href={card.facebook.startsWith('http') ? card.facebook : `https://facebook.com/${card.facebook}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3 px-4 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 border border-blue-500/30"
+            >
+              📘 Facebook Page
+            </a>
+          )}
+
+          {/* LINKEDIN */}
+          {card.linkedin && (
+            <a
+              href={card.linkedin.startsWith('http') ? card.linkedin : `https://${card.linkedin}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3 px-4 bg-sky-600/20 hover:bg-sky-600/30 text-sky-400 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 border border-sky-500/30"
+            >
+              💼 LinkedIn Profile
+            </a>
+          )}
+
         </div>
 
         {/* Footer Brand */}

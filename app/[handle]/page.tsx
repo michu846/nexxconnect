@@ -13,21 +13,21 @@ export default function PublicCardPage() {
 
   useEffect(() => {
     if (handle) {
-      fetchCardDetails();
+      fetchCardData();
     }
   }, [handle]);
 
-  const fetchCardDetails = async () => {
+  const fetchCardData = async () => {
     try {
+      // Ensure company_name is selected in the database query
       const { data, error } = await supabase
         .from('cards')
         .select('*')
-        .eq('handle', handle.toLowerCase())
+        .eq('handle', handle)
         .single();
 
-      if (data) {
-        setCard(data);
-      }
+      if (error) throw error;
+      setCard(data);
     } catch (err) {
       console.error('Error fetching card:', err);
     } finally {
@@ -35,33 +35,28 @@ export default function PublicCardPage() {
     }
   };
 
-  // Helper function to generate and download the vCard (.vcf)
   const downloadVCard = () => {
     if (!card) return;
 
-    const vCardData = [
+    const vcardData = [
       'BEGIN:VCARD',
       'VERSION:3.0',
-      `FN:${card.full_name || card.handle}`,
-      `N:;${card.full_name || card.handle};;;`,
+      `FN:${card.full_name || ''}`,
+      card.company_name ? `ORG:${card.company_name}` : '',
       card.job_title ? `TITLE:${card.job_title}` : '',
       card.phone ? `TEL;TYPE=CELL:${card.phone}` : '',
-      card.whatsapp ? `TEL;TYPE=WORK,VOICE:${card.whatsapp}` : '',
-      card.email ? `EMAIL:${card.email}` : '',
       card.website ? `URL:${card.website}` : '',
-      card.linkedin ? `URL;TYPE=LinkedIn:${card.linkedin.startsWith('http') ? card.linkedin : `https://${card.linkedin}`}` : '',
-      card.location ? `ADR;TYPE=WORK:;;${card.location};;;;` : '',
       card.bio ? `NOTE:${card.bio}` : '',
       'END:VCARD',
     ]
       .filter(Boolean)
       .join('\n');
 
-    const blob = new Blob([vCardData], { type: 'text/vcard;charset=utf-8;' });
+    const blob = new Blob([vcardData], { type: 'text/vcard;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `${card.handle || 'contact'}.vcf`);
+    link.setAttribute('download', `${card.full_name || 'contact'}.vcf`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -70,149 +65,149 @@ export default function PublicCardPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
-        <div className="animate-pulse text-sm text-slate-400">Loading business card...</div>
+        <div className="animate-pulse text-sm text-slate-400">Loading card...</div>
       </div>
     );
   }
 
   if (!card) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-4 text-center">
-        <h1 className="text-2xl font-bold mb-2">Card Not Found</h1>
-        <p className="text-sm text-slate-400">The profile @{handle} does not exist or has been removed.</p>
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
+        <div className="text-center">
+          <h1 className="text-xl font-bold">Card Not Found</h1>
+          <p className="text-xs text-slate-400 mt-1">This digital card does not exist.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6 text-center">
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center space-y-4">
         
-        {/* Profile Header */}
-        <div className="space-y-3">
-          {card.avatar_url ? (
-            <img
-              src={card.avatar_url}
-              alt={card.full_name || card.handle}
-              className="w-24 h-24 rounded-full mx-auto object-cover border-2 border-blue-500 shadow-md"
-            />
-          ) : (
-            <div className="w-24 h-24 rounded-full bg-slate-800 border-2 border-slate-700 mx-auto flex items-center justify-center text-3xl shadow-md">
-              👤
-            </div>
+        {/* Profile Picture */}
+        {card.avatar_url ? (
+          <img
+            src={card.avatar_url}
+            alt={card.full_name || 'Profile'}
+            className="w-24 h-24 rounded-full object-cover border-4 border-blue-500 shadow-lg"
+          />
+        ) : (
+          <div className="w-24 h-24 rounded-full bg-slate-800 border-4 border-slate-700 flex items-center justify-center text-4xl shadow-lg">
+            👤
+          </div>
+        )}
+
+        {/* Name & Details */}
+        <div>
+          <h1 className="text-xl font-bold text-white">{card.full_name || card.handle}</h1>
+          
+          {/* DISPLAY COMPANY NAME */}
+          {card.company_name && (
+            <p className="text-sm font-semibold text-slate-300 mt-0.5">{card.company_name}</p>
           )}
 
-          <div>
-            <h1 className="text-xl font-bold text-white">{card.full_name || card.handle}</h1>
-            {card.job_title && <p className="text-xs text-blue-400 font-medium mt-0.5">{card.job_title}</p>}
-            {card.location && <p className="text-xs text-slate-400 mt-0.5">📍 {card.location}</p>}
-          </div>
+          {/* DISPLAY JOB TITLE */}
+          {card.job_title && (
+            <p className="text-xs text-blue-400 font-medium mt-0.5">{card.job_title}</p>
+          )}
 
-          {card.bio && (
-            <p className="text-xs text-slate-300 leading-relaxed bg-slate-950/50 p-3 rounded-xl border border-slate-800/80">
-              {card.bio}
-            </p>
+          {card.location && (
+            <p className="text-xs text-slate-400 mt-1">📍 {card.location}</p>
           )}
         </div>
 
-        {/* SAVE CONTACT BUTTON (V-CARD DOWNLOAD) */}
+        {/* Bio */}
+        {card.bio && (
+          <p className="text-xs text-slate-300 leading-relaxed bg-slate-950/50 p-3 rounded-xl border border-slate-800/80 w-full">
+            {card.bio}
+          </p>
+        )}
+
+        {/* Save Contact Button */}
         <button
           onClick={downloadVCard}
-          className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-2"
+          className="w-full py-3 bg-blue-600 hover:bg-blue-500 font-bold rounded-xl text-white transition text-xs shadow-lg flex items-center justify-center gap-2"
         >
-          📇 Save Contact to Phone
+          📲 Save to Contacts
         </button>
 
-        {/* Contact Actions & Social Links */}
-        <div className="space-y-2 pt-2 border-t border-slate-800">
-          
-          {/* CALL */}
+        {/* Social & Contact Links */}
+        <div className="w-full space-y-2 pt-2">
           {card.phone && (
             <a
               href={`tel:${card.phone}`}
-              className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 border border-slate-700"
+              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition"
             >
               📞 Call {card.phone}
             </a>
           )}
 
-          {/* WHATSAPP */}
           {card.whatsapp && (
             <a
               href={`https://wa.me/${card.whatsapp.replace(/[^0-9]/g, '')}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full py-3 px-4 bg-green-600/20 hover:bg-green-600/30 text-green-400 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 border border-green-500/30"
+              className="w-full py-2.5 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/30 rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition"
             >
-              💬 Chat on WhatsApp
+              💬 WhatsApp
             </a>
           )}
 
-          {/* GOOGLE REVIEW */}
           {card.google_review && (
             <a
-              href={card.google_review.startsWith('http') ? card.google_review : `https://${card.google_review}`}
+              href={card.google_review}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full py-3 px-4 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 border border-yellow-500/30"
+              className="w-full py-2.5 bg-amber-500/10 text-amber-300 border border-amber-500/20 hover:bg-amber-500/20 rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition"
             >
-              ⭐ Leave a Google Review
+              ⭐ Leave Google Review
             </a>
           )}
 
-          {/* WEBSITE */}
           {card.website && (
             <a
               href={card.website.startsWith('http') ? card.website : `https://${card.website}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 border border-slate-700"
+              className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition"
             >
               🌐 Visit Website
             </a>
           )}
 
-          {/* INSTAGRAM */}
-          {card.instagram && (
-            <a
-              href={card.instagram.startsWith('http') ? card.instagram : `https://instagram.com/${card.instagram}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 border border-slate-700"
-            >
-              📸 Instagram Profile
-            </a>
-          )}
-
-          {/* FACEBOOK */}
-          {card.facebook && (
-            <a
-              href={card.facebook.startsWith('http') ? card.facebook : `https://facebook.com/${card.facebook}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full py-3 px-4 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 border border-blue-500/30"
-            >
-              📘 Facebook Page
-            </a>
-          )}
-
-          {/* LINKEDIN */}
           {card.linkedin && (
             <a
               href={card.linkedin.startsWith('http') ? card.linkedin : `https://${card.linkedin}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full py-3 px-4 bg-sky-600/20 hover:bg-sky-600/30 text-sky-400 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 border border-sky-500/30"
+              className="w-full py-2.5 bg-sky-600/20 text-sky-400 border border-sky-500/30 hover:bg-sky-600/30 rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition"
             >
-              💼 LinkedIn Profile
+              💼 LinkedIn
             </a>
           )}
 
-        </div>
+          {card.instagram && (
+            <a
+              href={card.instagram.startsWith('http') ? card.instagram : `https://instagram.com/${card.instagram}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-2.5 bg-pink-600/20 text-pink-400 border border-pink-500/30 hover:bg-pink-600/30 rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition"
+            >
+              📸 Instagram
+            </a>
+          )}
 
-        {/* Footer Brand */}
-        <div className="pt-2 text-[10px] text-slate-500 font-mono">
-          Powered by <span className="text-blue-400">NexxConnect</span>
+          {card.facebook && (
+            <a
+              href={card.facebook.startsWith('http') ? card.facebook : `https://${card.facebook}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-2.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600/30 rounded-xl text-xs font-medium flex items-center justify-center gap-2 transition"
+            >
+              📘 Facebook
+            </a>
+          )}
         </div>
 
       </div>

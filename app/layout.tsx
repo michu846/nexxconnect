@@ -27,3 +27,4 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     </html>
   );
 }
+<link rel="manifest" href="/manifest.json" />

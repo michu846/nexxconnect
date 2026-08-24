@@ -1,0 +1,9 @@
+{
+  "appId": "com.nexxconnect.admin",
+  "appName": "NexxConnect Admin",
+  "webDir": "out",
+  "server": {
+    "url": "https://nexxconnect.vercel.app/admin",
+    "cleartext": true
+  }
+}

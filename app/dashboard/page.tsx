@@ -14,7 +14,9 @@ export default function DashboardPage() {
 
   // Card Profile State
   const [fullName, setFullName] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [jobTitle, setJobTitle] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [bio, setBio] = useState('');
   const [phone, setPhone] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
@@ -50,7 +52,9 @@ export default function DashboardPage() {
 
       if (card) {
         setFullName(card.full_name || '');
+        setCompanyName(card.company_name || '');
         setJobTitle(card.job_title || '');
+        setAvatarUrl(card.avatar_url || '');
         setBio(card.bio || '');
         setPhone(card.phone || '');
         setWhatsapp(card.whatsapp || '');
@@ -109,7 +113,9 @@ export default function DashboardPage() {
         .from('cards')
         .update({
           full_name: fullName,
+          company_name: companyName,
           job_title: jobTitle,
+          avatar_url: avatarUrl,
           bio,
           phone,
           whatsapp,
@@ -202,6 +208,34 @@ export default function DashboardPage() {
               <h2 className="text-sm font-bold text-slate-200">Basic Info</h2>
             </div>
 
+            {/* PROFILE PICTURE PREVIEW & INPUT */}
+            <div className="flex flex-col items-center sm:flex-row gap-4 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Profile Preview"
+                  className="w-16 h-16 rounded-full object-cover border-2 border-blue-500 shrink-0"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-slate-800 border-2 border-slate-700 flex items-center justify-center text-2xl shrink-0">
+                  👤
+                </div>
+              )}
+              <div className="w-full">
+                <label className="text-slate-400 font-medium">Profile Picture Image URL</label>
+                <input
+                  type="text"
+                  value={avatarUrl}
+                  onChange={(e) => setAvatarUrl(e.target.value)}
+                  placeholder="https://example.com/your-photo.jpg"
+                  className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Paste a direct link to your photo (e.g. Imgur, LinkedIn picture link, or hosted image).
+                </p>
+              </div>
+            </div>
+
             <div>
               <label className="text-slate-400">Full Name</label>
               <input
@@ -209,6 +243,17 @@ export default function DashboardPage() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="John Doe"
+                className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-400">Company / Business Name</label>
+              <input
+                type="text"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Acme Corp"
                 className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
               />
             </div>

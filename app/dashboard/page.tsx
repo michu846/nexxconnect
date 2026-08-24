@@ -3,330 +3,304 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import QRCode from 'qrcode';
 
-export default function DashboardPage() {
-  const router = useRouter();
-
+export default function CustomerDashboard() {
+  const router = Router();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [user, setUser] = useState<any>(null);
 
-  // Form states
-  const [handle, setHandle] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [jobTitle, setJobTitle] = useState('');
-  const [phone, setPhone] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [location, setLocation] = useState('');
-  const [bio, setBio] = useState('');
-  const [theme, setTheme] = useState('dark');
-  const [avatarUrl, setAvatarUrl] = useState('');
+  // Card details state
+  const [card, setCard] = useState<any>({
+    handle: '',
+    full_name: '',
+    job_title: '',
+    location: '',
+    bio: '',
+    phone: '',
+    whatsapp: '',
+    website: '',
+    facebook: '',
+    instagram: '',
+    linkedin: '',
+    google_reviews: '',
+    payment_link: '',
+    avatar_url: '',
+    theme: 'dark',
+  });
 
-  // Social & Link fields
-  const [website, setWebsite] = useState('');
-  const [facebook, setFacebook] = useState('');
-  const [instagram, setInstagram] = useState('');
-  const [linkedin, setLinkedin] = useState('');
-  const [googleReviews, setGoogleReviews] = useState('');
-  const [paymentLink, setPaymentLink] = useState('');
+  // QR Code State
+  const [qrUrl, setQrUrl] = useState<string>('');
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          router.push('/login');
-          return;
-        }
-        setUser(session.user);
+    fetchProfile();
+  }, []);
 
-        const { data: card } = await supabase
-          .from('cards')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .maybeSingle();
-
-        if (card) {
-          setHandle(card.handle || '');
-          setFullName(card.full_name || '');
-          setJobTitle(card.job_title || '');
-          setPhone(card.phone || '');
-          setWhatsapp(card.whatsapp || '');
-          setLocation(card.location || '');
-          setBio(card.bio || '');
-          setTheme(card.theme || 'dark');
-          setAvatarUrl(card.avatar_url || '');
-          setWebsite(card.website || '');
-          setFacebook(card.facebook || '');
-          setInstagram(card.instagram || '');
-          setLinkedin(card.linkedin || '');
-          setGoogleReviews(card.google_reviews || '');
-          setPaymentLink(card.payment_link || '');
-        }
-      } catch (err) {
-        console.error('Error fetching data:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserData();
-  }, [router]);
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert('Image must be under 2MB');
+  const fetchProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/login');
         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => setAvatarUrl(reader.result as string);
-      reader.readAsDataURL(file);
+
+      const { data, error } = await supabase
+        .from('cards')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (data) {
+        setCard(data);
+        generateQRCode(data.handle);
+      }
+    } catch (err) {
+      console.error('Error loading dashboard profile:', err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const generateQRCode = (handle: string) => {
+    if (!handle) return;
+    const publicUrl = `https://nexxconnect.vercel.app/${handle}`;
+    QRCode.toDataURL(publicUrl, { width: 600, margin: 2 }, (err, url) => {
+      if (!err) setQrUrl(url);
+    });
+  };
+
+  const handleDownloadQR = () => {
+    if (!qrUrl) return;
+    const downloadLink = document.createElement('a');
+    downloadLink.href = qrUrl;
+    downloadLink.download = `${card.handle || 'business-card'}-qr.png`;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
-    const { error } = await supabase
-      .from('cards')
-      .upsert(
-        {
-          user_id: user?.id,
-          handle: handle.toLowerCase().trim(),
-          full_name: fullName,
-          job_title: jobTitle,
-          phone,
-          whatsapp,
-          location,
-          bio,
-          theme,
-          avatar_url: avatarUrl,
-          website,
-          facebook,
-          instagram,
-          linkedin,
-          google_reviews: googleReviews,
-          payment_link: paymentLink,
-        },
-        { onConflict: 'handle' }
-      );
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    setSaving(false);
+      const { error } = await supabase
+        .from('cards')
+        .update({
+          full_name: card.full_name,
+          job_title: card.job_title,
+          location: card.location,
+          bio: card.bio,
+          phone: card.phone,
+          whatsapp: card.whatsapp,
+          website: card.website,
+          facebook: card.facebook,
+          instagram: card.instagram,
+          linkedin: card.linkedin,
+          google_reviews: card.google_reviews,
+          payment_link: card.payment_link,
+          avatar_url: card.avatar_url,
+          theme: card.theme,
+        })
+        .eq('user_id', user.id);
 
-    if (error) {
-      alert(`Failed to save: ${error.message}`);
-    } else {
+      if (error) throw error;
       alert('Card updated successfully!');
+    } catch (err: any) {
+      alert(`Error updating card: ${err.message}`);
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleSignOut = async () => {
+  const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/login');
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-        Loading dashboard...
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
+        <div className="animate-pulse text-sm text-slate-400">Loading dashboard...</div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-4 sm:p-8 flex flex-col items-center">
-      <div className="w-full max-w-xl bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-6">
-        <div className="flex justify-between items-center border-b border-slate-800 pb-4">
-          <div>
-            <h1 className="text-2xl font-bold">Edit Your Card</h1>
-            <p className="text-xs text-slate-400">{user?.email}</p>
-          </div>
-          <button
-            onClick={handleSignOut}
-            type="button"
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold"
+      
+      {/* Top Bar */}
+      <div className="w-full max-w-4xl flex justify-between items-center bg-slate-900 border border-slate-800 p-4 rounded-2xl mb-6 shadow-lg">
+        <div>
+          <h1 className="text-xl font-bold">Manage Your Business Card</h1>
+          <p className="text-xs text-blue-400 font-mono">https://nexxconnect.vercel.app/{card.handle}</p>
+        </div>
+        <div className="flex gap-2">
+          <a
+            href={`/${card.handle}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl font-semibold transition"
           >
-            Sign Out
+            🔗 View Live Card
+          </a>
+          <button
+            onClick={handleLogout}
+            className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl font-semibold transition border border-slate-700"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+
+      <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        {/* QR CODE DOWNLOAD BOX */}
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4 shadow-xl text-center md:col-span-1 h-fit">
+          <h2 className="text-lg font-bold">Your Card QR Code</h2>
+          <p className="text-xs text-slate-400">Scan or download to print on physical cards.</p>
+
+          {qrUrl ? (
+            <div className="bg-white p-4 rounded-2xl inline-block shadow-inner">
+              <img src={qrUrl} alt="QR Code" className="w-44 h-44 mx-auto" />
+            </div>
+          ) : (
+            <div className="w-44 h-44 bg-slate-800 rounded-2xl animate-pulse mx-auto" />
+          )}
+
+          <button
+            onClick={handleDownloadQR}
+            disabled={!qrUrl}
+            className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl text-white text-xs transition shadow-lg flex items-center justify-center gap-2"
+          >
+            📥 Download QR Code (PNG)
           </button>
         </div>
 
-        <form onSubmit={handleSave} className="space-y-4">
-          <div>
-            <label className="text-xs text-slate-400">Handle / Custom URL</label>
-            <input
-              type="text"
-              value={handle}
-              onChange={(e) => setHandle(e.target.value)}
-              required
-              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
-            />
-          </div>
+        {/* EDIT CARD FORM */}
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4 shadow-xl md:col-span-2">
+          <h2 className="text-lg font-bold border-b border-slate-800 pb-2">Profile Details</h2>
 
-          <div>
-            <label className="text-xs text-slate-400">Full Name</label>
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
-            />
-          </div>
+          <form onSubmit={handleSave} className="space-y-4 text-xs">
+            <div>
+              <label className="text-slate-400">Theme Style</label>
+              <select
+                value={card.theme}
+                onChange={(e) => setCard({ ...card, theme: e.target.value })}
+                className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+              >
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+                <option value="gradient">Gradient</option>
+                <option value="glass">Glassmorphism</option>
+              </select>
+            </div>
 
-          <div>
-            <label className="text-xs text-slate-400">Job Title / Role</label>
-            <input
-              type="text"
-              value={jobTitle}
-              onChange={(e) => setJobTitle(e.target.value)}
-              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
-            />
-          </div>
+            <div>
+              <label className="text-slate-400">Full Name</label>
+              <input
+                type="text"
+                value={card.full_name || ''}
+                onChange={(e) => setCard({ ...card, full_name: e.target.value })}
+                placeholder="John Doe"
+                className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+              />
+            </div>
 
-          <div>
-            <label className="text-xs text-slate-400">Phone Number</label>
-            <input
-              type="text"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
-            />
-          </div>
+            <div>
+              <label className="text-slate-400">Job Title / Tagline</label>
+              <input
+                type="text"
+                value={card.job_title || ''}
+                onChange={(e) => setCard({ ...card, job_title: e.target.value })}
+                placeholder="Software Engineer"
+                className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+              />
+            </div>
 
-          <div>
-            <label className="text-xs text-slate-400">WhatsApp Number</label>
-            <input
-              type="text"
-              value={whatsapp}
-              onChange={(e) => setWhatsapp(e.target.value)}
-              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
-            />
-          </div>
+            <div>
+              <label className="text-slate-400">Location</label>
+              <input
+                type="text"
+                value={card.location || ''}
+                onChange={(e) => setCard({ ...card, location: e.target.value })}
+                placeholder="Dubai, UAE"
+                className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+              />
+            </div>
 
-          <div>
-            <label className="text-xs text-slate-400">Location / Address</label>
-            <input
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
-            />
-          </div>
+            <div>
+              <label className="text-slate-400">Bio</label>
+              <textarea
+                rows={3}
+                value={card.bio || ''}
+                onChange={(e) => setCard({ ...card, bio: e.target.value })}
+                placeholder="Brief intro..."
+                className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none resize-none"
+              />
+            </div>
 
-          <div>
-            <label className="text-xs text-slate-400">Bio</label>
-            <textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              rows={2}
-              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
-            />
-          </div>
+            <div className="pt-2 border-t border-slate-800 space-y-3">
+              <h3 className="font-bold text-slate-300">Contact & Links</h3>
 
-          <div>
-            <label className="text-xs text-slate-400">Website URL</label>
-            <input
-              type="text"
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
-            />
-          </div>
+              <div>
+                <label className="text-slate-400">Phone Number</label>
+                <input
+                  type="text"
+                  value={card.phone || ''}
+                  onChange={(e) => setCard({ ...card, phone: e.target.value })}
+                  placeholder="+971 50 123 4567"
+                  className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+                />
+              </div>
 
-          <div>
-            <label className="text-xs text-slate-400">Facebook Link</label>
-            <input
-              type="text"
-              value={facebook}
-              onChange={(e) => setFacebook(e.target.value)}
-              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
-            />
-          </div>
+              <div>
+                <label className="text-slate-400">WhatsApp Number</label>
+                <input
+                  type="text"
+                  value={card.whatsapp || ''}
+                  onChange={(e) => setCard({ ...card, whatsapp: e.target.value })}
+                  placeholder="+971501234567"
+                  className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+                />
+              </div>
 
-          <div>
-            <label className="text-xs text-slate-400">Instagram Link</label>
-            <input
-              type="text"
-              value={instagram}
-              onChange={(e) => setInstagram(e.target.value)}
-              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
-            />
-          </div>
+              <div>
+                <label className="text-slate-400">Website URL</label>
+                <input
+                  type="text"
+                  value={card.website || ''}
+                  onChange={(e) => setCard({ ...card, website: e.target.value })}
+                  placeholder="https://example.com"
+                  className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+                />
+              </div>
 
-          <div>
-            <label className="text-xs text-slate-400">LinkedIn Link</label>
-            <input
-              type="text"
-              value={linkedin}
-              onChange={(e) => setLinkedin(e.target.value)}
-              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
-            />
-          </div>
+              <div>
+                <label className="text-slate-400">Instagram</label>
+                <input
+                  type="text"
+                  value={card.instagram || ''}
+                  onChange={(e) => setCard({ ...card, instagram: e.target.value })}
+                  placeholder="https://instagram.com/yourhandle"
+                  className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+                />
+              </div>
+            </div>
 
-          <div>
-            <label className="text-xs text-slate-400">Google Reviews Link</label>
-            <input
-              type="text"
-              value={googleReviews}
-              onChange={(e) => setGoogleReviews(e.target.value)}
-              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs text-slate-400">Payment / UPI Link</label>
-            <input
-              type="text"
-              value={paymentLink}
-              onChange={(e) => setPaymentLink(e.target.value)}
-              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs text-slate-400">Theme Selection</label>
-            <select
-              value={theme}
-              onChange={(e) => setTheme(e.target.value)}
-              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-500 font-bold rounded-xl text-white text-xs transition mt-4"
             >
-              <option value="dark">Dark Modern</option>
-              <option value="glass">Glassmorphism</option>
-              <option value="light">Minimal Light</option>
-              <option value="neon">Cyber Neon</option>
-            </select>
-          </div>
+              {saving ? 'Saving Profile...' : 'Save Profile Changes'}
+            </button>
+          </form>
+        </div>
 
-          <div>
-            <label className="text-xs text-slate-400">Upload Profile Photo File</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="w-full p-2 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-xs text-slate-300 file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs text-slate-400">Profile Photo URL (Alternative)</label>
-            <input
-              type="text"
-              value={avatarUrl}
-              onChange={(e) => setAvatarUrl(e.target.value)}
-              className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 font-bold rounded-xl text-white transition mt-4"
-          >
-            {saving ? 'Saving...' : 'Save Card Settings'}
-          </button>
-        </form>
       </div>
     </div>
   );

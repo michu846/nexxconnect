@@ -1,69 +1,81 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic'; // Prevent Next.js from caching empty responses
+export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function POST(req: Request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
-    return NextResponse.json({ 
-      error: 'Missing environment variables. Check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.' 
-    }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Missing environment variables: SUPABASE_SERVICE_ROLE_KEY' },
+      { status: 500 }
+    );
   }
 
-  // Create client directly with service role key
   const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false }
+    auth: { autoRefreshToken: false, persistSession: false },
   });
 
   try {
-    // 1. Fetch Auth Users
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+    const { email, password, handle, fullName } = await req.json();
 
-    if (authError) {
-      return NextResponse.json({ error: `Auth Error: ${authError.message}` }, { status: 400 });
+    if (!email || !password || !handle) {
+      return NextResponse.json(
+        { error: 'Email, password, and handle are required.' },
+        { status: 400 }
+      );
     }
 
-    // 2. Fetch Cards Table
-    const { data: cards, error: cardsError } = await supabaseAdmin
-      .from('cards')
-      .select('user_id, handle, full_name');
+    const cleanedHandle = handle.toLowerCase().trim();
 
-    // 3. Map Users
-    const users = (authData?.users || []).map((u) => {
-      const card = cards?.find((c) => c.user_id === u.id);
-      return {
-        id: u.id,
-        email: u.email || 'No Email',
-        handle: card?.handle || 'no-handle',
-        fullName: card?.full_name || '',
-      };
+    // 1. Check if handle already exists in cards table
+    const { data: existingCard } = await supabaseAdmin
+      .from('cards')
+      .select('id')
+      .eq('handle', cleanedHandle)
+      .maybeSingle();
+
+    if (existingCard) {
+      return NextResponse.json(
+        { error: `Handle "${cleanedHandle}" is already taken.` },
+        { status: 400 }
+      );
+    }
+
+    // 2. Create the User in Supabase Auth
+    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: email.trim(),
+      password: password,
+      email_confirm: true,
     });
 
-    return NextResponse.json({ users, count: users.length });
+    if (authError || !authUser.user) {
+      return NextResponse.json(
+        { error: authError?.message || 'Failed to create auth user' },
+        { status: 400 }
+      );
+    }
+
+    const userId = authUser.user.id; // GUARANTEED VALID UUID
+
+    // 3. Insert initial row into 'cards' tablelinked by user_id
+    const { error: cardError } = await supabaseAdmin.from('cards').insert({
+      user_id: userId,
+      handle: cleanedHandle,
+      full_name: fullName || '',
+      theme: 'dark',
+    });
+
+    if (cardError) {
+      // Clean up auth user if card creation fails
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+      return NextResponse.json({ error: cardError.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, userId, handle: cleanedHandle });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
-  }
-}
-
-export async function POST(req: Request) {
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-
-  try {
-    const { userId, newPassword } = await req.json();
-
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-      password: newPassword,
-    });
-
-    if (error) throw error;
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }

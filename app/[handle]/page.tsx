@@ -8,220 +8,169 @@ export default function PublicCardPage() {
   const params = useParams();
   const handle = params?.handle as string;
 
-  const [loading, setLoading] = useState(true);
   const [card, setCard] = useState<any>(null);
-  const [notFound, setNotFound] = useState(false);
-  const [imgError, setImgError] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!handle) return;
-
-    const fetchCard = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('cards')
-          .select('*')
-          .eq('handle', handle.toLowerCase().trim())
-          .maybeSingle();
-
-        if (error || !data) {
-          setNotFound(true);
-        } else {
-          setCard(data);
-        }
-      } catch (err) {
-        console.error('Error fetching card:', err);
-        setNotFound(true);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCard();
+    if (handle) {
+      fetchCardDetails();
+    }
   }, [handle]);
+
+  const fetchCardDetails = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('cards')
+        .select('*')
+        .eq('handle', handle.toLowerCase())
+        .single();
+
+      if (data) {
+        setCard(data);
+      }
+    } catch (err) {
+      console.error('Error fetching card:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper function to generate and download the vCard (.vcf)
+  const downloadVCard = () => {
+    if (!card) return;
+
+    const vCardData = [
+      'BEGIN:VCARD',
+      'VERSION:3.0',
+      `FN:${card.full_name || card.handle}`,
+      `N:;${card.full_name || card.handle};;;`,
+      card.job_title ? `TITLE:${card.job_title}` : '',
+      card.phone ? `TEL;TYPE=CELL:${card.phone}` : '',
+      card.whatsapp ? `TEL;TYPE=WORK,VOICE:${card.whatsapp}` : '',
+      card.website ? `URL:${card.website}` : '',
+      card.location ? `ADR;TYPE=WORK:;;${card.location};;;;` : '',
+      card.bio ? `NOTE:${card.bio}` : '',
+      'END:VCARD',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    const blob = new Blob([vCardData], { type: 'text/vcard;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${card.handle || 'contact'}.vcf`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
-        <div className="animate-pulse flex flex-col items-center gap-3">
-          <div className="w-12 h-12 bg-slate-800 rounded-full"></div>
-          <div className="h-4 w-32 bg-slate-800 rounded"></div>
-        </div>
+        <div className="animate-pulse text-sm text-slate-400">Loading business card...</div>
       </div>
     );
   }
 
-  if (notFound || !card) {
+  if (!card) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-4 text-center">
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 p-8 rounded-3xl space-y-4">
-          <h1 className="text-2xl font-bold text-slate-200">Card Not Found</h1>
-          <p className="text-xs text-slate-400">
-            The card handle <span className="text-blue-400">"{handle}"</span> does not exist or has been removed.
-          </p>
-        </div>
+        <h1 className="text-2xl font-bold mb-2">Card Not Found</h1>
+        <p className="text-sm text-slate-400">The profile @{handle} does not exist or has been removed.</p>
       </div>
     );
   }
 
-  // Get initials for fallback icon
-  const initials = card.full_name
-    ? card.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
-    : 'NC';
-
-  // Define Theme Dynamic Classes
-  const selectedTheme = card.theme || 'dark';
-
-  const themeStyles: Record<string, { pageBg: string; cardBg: string; textColor: string; subTextColor: string; border: string }> = {
-    dark: {
-      pageBg: 'bg-slate-950',
-      cardBg: 'bg-slate-900',
-      textColor: 'text-white',
-      subTextColor: 'text-slate-400',
-      border: 'border-slate-800',
-    },
-    light: {
-      pageBg: 'bg-slate-100',
-      cardBg: 'bg-white',
-      textColor: 'text-slate-900',
-      subTextColor: 'text-slate-600',
-      border: 'border-slate-200 shadow-xl',
-    },
-    gradient: {
-      pageBg: 'bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-950',
-      cardBg: 'bg-slate-900/90 backdrop-blur-md',
-      textColor: 'text-white',
-      subTextColor: 'text-purple-200',
-      border: 'border-purple-500/30',
-    },
-    glass: {
-      pageBg: 'bg-gradient-to-tr from-sky-900 via-slate-950 to-indigo-950',
-      cardBg: 'bg-white/10 backdrop-blur-lg',
-      textColor: 'text-white',
-      subTextColor: 'text-sky-200',
-      border: 'border-white/20 shadow-2xl',
-    },
-  };
-
-  const theme = themeStyles[selectedTheme] || themeStyles.dark;
-
   return (
-    <div className={`min-h-screen ${theme.pageBg} ${theme.textColor} p-4 sm:p-8 flex flex-col items-center justify-center transition-colors duration-300`}>
-      <div className={`w-full max-w-sm ${theme.cardBg} border ${theme.border} rounded-3xl p-6 space-y-6 text-center shadow-2xl`}>
+    <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6 text-center">
         
-        {/* Avatar Container */}
-        <div className="relative w-28 h-28 mx-auto">
-          {card.avatar_url && !imgError ? (
+        {/* Profile Header */}
+        <div className="space-y-3">
+          {card.avatar_url ? (
             <img
               src={card.avatar_url}
-              alt=""
-              onError={() => setImgError(true)}
-              className="w-28 h-28 rounded-full object-cover border-4 border-slate-700/50 shadow-md"
+              alt={card.full_name || card.handle}
+              className="w-24 h-24 rounded-full mx-auto object-cover border-2 border-blue-500 shadow-md"
             />
           ) : (
-            <div className="w-28 h-28 rounded-full bg-slate-800 border-4 border-slate-700 flex items-center justify-center text-xl font-bold text-slate-300">
-              {initials}
+            <div className="w-24 h-24 rounded-full bg-slate-800 border-2 border-slate-700 mx-auto flex items-center justify-center text-3xl shadow-md">
+              👤
             </div>
           )}
+
+          <div>
+            <h1 className="text-xl font-bold text-white">{card.full_name || card.handle}</h1>
+            {card.job_title && <p className="text-xs text-blue-400 font-medium mt-0.5">{card.job_title}</p>}
+            {card.location && <p className="text-xs text-slate-400 mt-0.5">📍 {card.location}</p>}
+          </div>
+
+          {card.bio && (
+            <p className="text-xs text-slate-300 leading-relaxed bg-slate-950/50 p-3 rounded-xl border border-slate-800/80">
+              {card.bio}
+            </p>
+          )}
         </div>
 
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold">{card.full_name || 'Anonymous'}</h1>
-          {card.job_title && (
-            <p className={`text-xs font-medium ${theme.subTextColor}`}>{card.job_title}</p>
-          )}
-          {card.location && (
-            <p className={`text-xs ${theme.subTextColor}`}>📍 {card.location}</p>
-          )}
-        </div>
+        {/* SAVE CONTACT BUTTON (V-CARD DOWNLOAD) */}
+        <button
+          onClick={downloadVCard}
+          className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-2"
+        >
+          📇 Save Contact to Phone
+        </button>
 
-        {card.bio && (
-          <p className={`text-xs ${theme.textColor} bg-black/20 p-3 rounded-xl border border-white/10`}>
-            {card.bio}
-          </p>
-        )}
-
-        {/* Action & Social Links */}
-        <div className="space-y-2 pt-2">
+        {/* Contact Actions & Links */}
+        <div className="space-y-2 pt-2 border-t border-slate-800">
           {card.phone && (
             <a
               href={`tel:${card.phone}`}
-              className="block w-full py-3 bg-blue-600 hover:bg-blue-500 font-semibold rounded-xl text-xs text-white transition"
+              className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 border border-slate-700"
             >
-              📞 Call Phone
+              📞 Call {card.phone}
             </a>
           )}
+
           {card.whatsapp && (
             <a
-              href={`https://wa.me/${card.whatsapp.replace(/\D/g, '')}`}
+              href={`https://wa.me/${card.whatsapp.replace(/[^0-9]/g, '')}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full py-3 bg-emerald-600 hover:bg-emerald-500 font-semibold rounded-xl text-xs text-white transition"
+              className="w-full py-3 px-4 bg-green-600/20 hover:bg-green-600/30 text-green-400 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 border border-green-500/30"
             >
-              💬 WhatsApp
+              💬 Chat on WhatsApp
             </a>
           )}
+
           {card.website && (
             <a
               href={card.website.startsWith('http') ? card.website : `https://${card.website}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full py-3 bg-slate-800 hover:bg-slate-700 font-semibold rounded-xl text-xs text-white transition border border-slate-700"
+              className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 border border-slate-700"
             >
-              🌐 Website
+              🌐 Visit Website
             </a>
           )}
-          {card.facebook && (
-            <a
-              href={card.facebook.startsWith('http') ? card.facebook : `https://${card.facebook}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full py-3 bg-blue-700 hover:bg-blue-600 font-semibold rounded-xl text-xs text-white transition"
-            >
-              📘 Facebook
-            </a>
-          )}
+
           {card.instagram && (
             <a
-              href={card.instagram.startsWith('http') ? card.instagram : `https://${card.instagram}`}
+              href={card.instagram.startsWith('http') ? card.instagram : `https://instagram.com/${card.instagram}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full py-3 bg-pink-600 hover:bg-pink-500 font-semibold rounded-xl text-xs text-white transition"
+              className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-xl text-xs transition flex items-center justify-center gap-2 border border-slate-700"
             >
-              📸 Instagram
-            </a>
-          )}
-          {card.linkedin && (
-            <a
-              href={card.linkedin.startsWith('http') ? card.linkedin : `https://${card.linkedin}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full py-3 bg-sky-700 hover:bg-sky-600 font-semibold rounded-xl text-xs text-white transition"
-            >
-              💼 LinkedIn
-            </a>
-          )}
-          {card.google_reviews && (
-            <a
-              href={card.google_reviews.startsWith('http') ? card.google_reviews : `https://${card.google_reviews}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full py-3 bg-amber-600 hover:bg-amber-500 font-semibold rounded-xl text-xs text-white transition"
-            >
-              ⭐ Google Reviews
-            </a>
-          )}
-          {card.payment_link && (
-            <a
-              href={card.payment_link.startsWith('http') ? card.payment_link : `https://${card.payment_link}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full py-3 bg-purple-600 hover:bg-purple-500 font-semibold rounded-xl text-xs text-white transition"
-            >
-              💳 Payment / UPI
+              📸 Instagram Profile
             </a>
           )}
         </div>
+
+        {/* Footer Brand */}
+        <div className="pt-2 text-[10px] text-slate-500 font-mono">
+          Powered by <span className="text-blue-400">NexxConnect</span>
+        </div>
+
       </div>
     </div>
   );

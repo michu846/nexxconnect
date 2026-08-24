@@ -9,6 +9,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
@@ -43,8 +44,7 @@ export default function DashboardPage() {
 
       setUser(currentUser);
 
-      // Fetch user card profile
-      const { data: card, error } = await supabase
+      const { data: card } = await supabase
         .from('cards')
         .select('*')
         .eq('user_id', currentUser.id)
@@ -82,10 +82,7 @@ export default function DashboardPage() {
       const qrData = await QRCode.toDataURL(url, {
         width: 600,
         margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#ffffff',
-        },
+        color: { dark: '#000000', light: '#ffffff' },
       });
       setQrCodeUrl(qrData);
     } catch (err) {
@@ -101,6 +98,36 @@ export default function DashboardPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // HANDLER FOR DIRECT DEVICE IMAGE UPLOAD
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      if (!e.target.files || e.target.files.length === 0) return;
+      setUploading(true);
+
+      const file = e.target.files[0];
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}-${Math.random()}.${fileExt}`;
+
+      // Upload file to Supabase Storage Bucket
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get Public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      setAvatarUrl(publicUrl);
+    } catch (error: any) {
+      alert(`Image upload failed: ${error.message}`);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -188,7 +215,7 @@ export default function DashboardPage() {
             <div className="space-y-2 text-center sm:text-left flex-1">
               <h2 className="text-base font-bold text-white">Your Card QR Code</h2>
               <p className="text-xs text-slate-400">
-                Scan this QR code to quickly open your live digital business card. Download high-res PNG for printing on physical NFC cards or flyers.
+                Scan this QR code to quickly open your live digital business card. Download high-res PNG for physical NFC cards.
               </p>
               <button
                 onClick={downloadQRCode}
@@ -208,7 +235,7 @@ export default function DashboardPage() {
               <h2 className="text-sm font-bold text-slate-200">Basic Info</h2>
             </div>
 
-            {/* PROFILE PICTURE PREVIEW & INPUT */}
+            {/* DIRECT FILE UPLOAD COMPONENT */}
             <div className="flex flex-col items-center sm:flex-row gap-4 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
               {avatarUrl ? (
                 <img
@@ -221,18 +248,19 @@ export default function DashboardPage() {
                   👤
                 </div>
               )}
-              <div className="w-full">
-                <label className="text-slate-400 font-medium">Profile Picture Image URL</label>
+              
+              <div className="w-full space-y-2">
+                <label className="text-slate-400 font-medium block">Profile Picture</label>
+                
                 <input
-                  type="text"
-                  value={avatarUrl}
-                  onChange={(e) => setAvatarUrl(e.target.value)}
-                  placeholder="https://example.com/your-photo.jpg"
-                  className="w-full p-3 bg-slate-800 rounded-xl border border-slate-700 mt-1 text-white focus:outline-none"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  className="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer"
                 />
-                <p className="text-[10px] text-slate-500 mt-1">
-                  Paste a direct link to your photo (e.g. Imgur, LinkedIn picture link, or hosted image).
-                </p>
+                
+                {uploading && <p className="text-[10px] text-blue-400 animate-pulse">Uploading photo...</p>}
               </div>
             </div>
 
